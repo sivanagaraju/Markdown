@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>SQL2.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<p>Below is a comprehensive rewrite of the original article. All information has been retained, but the wording and flow have been adjusted for clarity and uniqueness.</p>
+<hr>
+<h1 id="5-practical-sql-examples-to-master-sql-group-by">5 Practical SQL Examples to Master SQL GROUP BY</h1>
+<p><strong>How to Use GROUP BY Clause in SQL | Towards Data Science</strong><br>
+<strong>From simple to more advanced GROUP BY scenarios, all under 10 minutes</strong></p>
+<hr>
+<h2 id="introduction-group-by-in-sql-explained">Introduction: GROUP BY in SQL, Explained</h2>
+<p>SQL (Structured Query Language) is a widely used tool for retrieving and transforming data stored in relational databases. A key aspect of data transformation is aggregation, and to properly aggregate data, understanding the <code>GROUP BY</code> clause is essential.</p>
+<p>In SQL, the <code>GROUP BY</code> clause is typically used alongside aggregate functions such as <code>SUM()</code>, <code>MIN()</code>, <code>MAX()</code>, <code>AVG()</code>, and <code>COUNT()</code>. When you apply these aggregate functions to a column, the results represent the calculated value for that particular group of rows.</p>
+<p>This article provides five practical examples of how to use the <code>GROUP BY</code> clause in SQL queries. By the end of these examples, you’ll be able to apply the <code>GROUP BY</code> clause in a variety of scenarios with confidence.</p>
+<h3 id="article-outline">Article Outline</h3>
+<ul>
+<li><a href="#5-practical-sql-examples-to-master-sql-group-by">5 Practical SQL Examples to Master SQL GROUP BY</a>
+<ul>
+<li><a href="#introduction-group-by-in-sql-explained">Introduction: GROUP BY in SQL, Explained</a>
+<ul>
+<li><a href="#article-outline">Article Outline</a></li>
+<li><a href="#dataset-and-setup">Dataset and Setup</a></li>
+</ul>
+</li>
+<li><a href="#1-group-by-with-aggregate-functions">1. GROUP BY with Aggregate Functions</a></li>
+<li><a href="#2-group-by-without-aggregate-functions">2. GROUP BY without Aggregate Functions</a></li>
+<li><a href="#3-group-by-with-having">3. GROUP BY with HAVING</a></li>
+<li><a href="#4-group-by-with-order-by">4. GROUP BY with ORDER BY</a></li>
+<li><a href="#5-group-by-with-where-having-and-order-by">5. GROUP BY with WHERE, HAVING, and ORDER BY</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="dataset-and-setup">Dataset and Setup</h3>
+<p>For demonstration, we’re using SQLite DB Browser with a self-created <a href="https://github.com/17rsuraj/data-curious/blob/master/TowardsDataScience/Dummy_Sales_Data_v1.csv">Sales Data</a> generated using the <a href="https://towardsdatascience.com/faker-an-amazing-and-insanely-useful-python-library-b313a60bdabf">Faker</a> Python library. This dataset, available on <a href="https://github.com/17rsuraj/data-curious/blob/master/TowardsDataScience/Dummy_Sales_Data_v1.csv">GitHub</a> under the <a href="https://github.com/17rsuraj/data-curious/blob/master/LICENSE.md">MIT License</a>, has 9999 rows and 11 columns, structured as shown below:</p>
+<p><img src="image.png" alt="alt text">
+<em>Dummy sales dataset | Image by Author</em></p>
+<p>Before proceeding, it’s important to remember this rule when using <code>GROUP BY</code>:</p>
+<blockquote>
+<p><strong>When you use <code>GROUP BY</code> in a SQL query, each column in the <code>SELECT</code> statement must appear either in the <code>GROUP BY</code> clause or within an aggregate function.</strong></p>
+</blockquote>
+<p>Let’s start with the simplest example and gradually move to more advanced ones.</p>
+<hr>
+<h2 id="1-group-by-with-aggregate-functions">1. GROUP BY with Aggregate Functions</h2>
+<p>This is the most common usage scenario, where you apply an aggregate function to one or more columns. The <code>GROUP BY</code> clause groups rows based on the specified columns, and the aggregate function calculates a value for each group.</p>
+<p>For instance, suppose we want to get a statistical summary of the <code>UnitPrice</code> for each <code>Product_Category</code>. We’ll use all aggregate functions in the example:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> 
+    Product_Category,
+    <span class="hljs-keyword">MIN</span>(UnitPrice) <span class="hljs-keyword">AS</span> Lowest_UnitPrice,
+    <span class="hljs-keyword">MAX</span>(UnitPrice) <span class="hljs-keyword">AS</span> Highest_UnitPrice,
+    <span class="hljs-keyword">SUM</span>(UnitPrice) <span class="hljs-keyword">AS</span> Total_UnitPrice,
+    <span class="hljs-keyword">AVG</span>(UnitPrice) <span class="hljs-keyword">AS</span> Average_UnitPrice
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> Product_Category;
+</div></code></pre>
+<p><img src="image-1.png" alt="alt text"></p>
+<p><em>Data Aggregation in SQL | Image by Author</em></p>
+<ul>
+<li>We’ve used two columns: <strong>Product_Category</strong> and <strong>UnitPrice</strong>.</li>
+<li><strong>Product_Category</strong> is in the <code>SELECT</code> list and is also the column we’re grouping by.</li>
+<li><strong>UnitPrice</strong> is used with aggregate functions (<code>MIN</code>, <code>MAX</code>, <code>SUM</code>, <code>AVG</code>).</li>
+</ul>
+<p>Notice the first row has <code>NULL</code> for <code>Product_Category</code>. According to the <a href="https://docs.microsoft.com/en-us/sql/t-sql/queries/select-group-by-transact-sql?view=sql-server-ver16">Microsoft documentation</a>:</p>
+<blockquote>
+<p>“If a grouping column contains NULL values, all NULL values are considered equal and they are collected into a single group.”</p>
+</blockquote>
+<p>By default, these <code>NULL</code> values appear at the top when sorting in ascending order. If you want to replace <code>NULL</code> with a more meaningful label in the output, you can use the <code>COALESCE</code> function:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> 
+    <span class="hljs-keyword">COALESCE</span>(Product_Category, <span class="hljs-string">'Undefined_Category'</span>) <span class="hljs-keyword">AS</span> Product_Category,
+    <span class="hljs-keyword">MIN</span>(UnitPrice) <span class="hljs-keyword">AS</span> Lowest_UnitPrice,
+    <span class="hljs-keyword">MAX</span>(UnitPrice) <span class="hljs-keyword">AS</span> Highest_UnitPrice,
+    <span class="hljs-keyword">SUM</span>(UnitPrice) <span class="hljs-keyword">AS</span> Total_UnitPrice,
+    <span class="hljs-keyword">AVG</span>(UnitPrice) <span class="hljs-keyword">AS</span> Average_UnitPrice
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> Product_Category;
+</div></code></pre>
+<p><img src="image-2.png" alt="alt text"></p>
+<p><em>Handling NULL Values in GROUP BY | Image by Author</em></p>
+<blockquote>
+<p><strong>Important:</strong> Although we used <code>COALESCE</code> on the <code>Product_Category</code> column, we did not aggregate this column. Thus, <code>Product_Category</code> still needs to be listed in the <code>GROUP BY</code> clause.</p>
+</blockquote>
+<p>You can apply as many aggregate functions as you need, as long as you ensure that non-aggregated columns appear in the <code>GROUP BY</code> clause.</p>
+<hr>
+<h2 id="2-group-by-without-aggregate-functions">2. GROUP BY without Aggregate Functions</h2>
+<p>While <code>GROUP BY</code> is usually used with aggregate functions, you can also use it <strong>without</strong> them to find unique rows.</p>
+<p>For example, let’s say you want to retrieve all <strong>unique combinations</strong> of <code>Sales_Manager</code> and <code>Product_Category</code>:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> 
+    Product_Category,
+    Sales_Manager
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> 
+    Product_Category,
+    Sales_Manager;
+</div></code></pre>
+<p><img src="image-3.png" alt="alt text">
+<em>Using GROUP BY without Aggregate Functions | Image by Author</em></p>
+<p>Some might note that you can achieve the same result using the <code>DISTINCT</code> keyword. However, there are two main reasons why <code>GROUP BY</code> can be preferable:</p>
+<ol>
+<li><strong>Sorting</strong>: Results from <code>GROUP BY</code> are automatically returned in ascending order based on the grouped columns.</li>
+<li><strong>Performance</strong>: When dealing with very large datasets (millions of rows) and/or multiple <code>JOIN</code>s, <code>DISTINCT</code> can be expensive. In contrast, <code>GROUP BY</code> is often more efficient in such cases.</li>
+</ol>
+<p>You can read more about interesting use cases of <code>GROUP BY</code> in other articles, but let’s move on to filtering grouped results.</p>
+<hr>
+<h2 id="3-group-by-with-having">3. GROUP BY with HAVING</h2>
+<p>In SQL, <code>HAVING</code> works similarly to <code>WHERE</code>, but it filters groups rather than individual rows.</p>
+<p><strong>Example 1: Filtering on Non-Aggregated Columns</strong><br>
+Imagine you want to get unique records of <code>Product_Category</code>, <code>Sales_Manager</code>, and <code>Shipping_Cost</code> where the <code>Shipping_Cost</code> is greater than or equal to 34. You could do this using either <code>WHERE</code> or <code>HAVING</code>:</p>
+<pre class="hljs"><code><div><span class="hljs-comment">-- Using WHERE clause</span>
+<span class="hljs-keyword">SELECT</span> 
+    Product_Category, 
+    Sales_Manager,
+    Shipping_Cost
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">WHERE</span> Shipping_Cost &gt;= <span class="hljs-number">34</span>
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> 
+    Product_Category, 
+    Sales_Manager, 
+    Shipping_Cost;
+
+<span class="hljs-comment">-- Using HAVING clause</span>
+<span class="hljs-keyword">SELECT</span> 
+    Product_Category,
+    Sales_Manager,
+    Shipping_Cost
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> 
+    Product_Category,
+    Sales_Manager,
+    Shipping_Cost
+<span class="hljs-keyword">HAVING</span> Shipping_Cost &gt;= <span class="hljs-number">34</span>;
+</div></code></pre>
+<p><img src="image-4.png" alt="alt text">
+<em>Same output from WHERE and HAVING in GROUP BY | Image by Author</em></p>
+<p>Both queries give the same result, but they operate differently:</p>
+<ul>
+<li><code>WHERE</code> is applied <strong>before</strong> <code>GROUP BY</code>, so it checks the entire dataset for <code>Shipping_Cost &gt;= 34</code>.</li>
+<li><code>HAVING</code> is applied <strong>after</strong> <code>GROUP BY</code>, so it filters already grouped rows, making it potentially more efficient.</li>
+</ul>
+<p><strong>Example 2: Filtering on Aggregated Columns</strong><br>
+Suppose you want each combination of <code>Product_Category</code> and <code>Sales_Manager</code> where the <strong>total</strong> <code>Shipping_Cost</code> is more than 6000. In this case, you need to filter on <code>SUM(Shipping_Cost)</code>, which cannot be done in the <code>WHERE</code> clause. Instead, you use <code>HAVING</code>:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> 
+    Product_Category,
+    Sales_Manager,
+    <span class="hljs-keyword">SUM</span>(Shipping_Cost) <span class="hljs-keyword">AS</span> Total_Cost
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> 
+    Product_Category,
+    Sales_Manager
+<span class="hljs-keyword">HAVING</span> <span class="hljs-keyword">SUM</span>(Shipping_Cost) &gt; <span class="hljs-number">6000</span>;
+</div></code></pre>
+<p><em>(Image:6.png)</em><br>
+<em>Using HAVING with Aggregated Columns | Image by Author</em></p>
+<p>Because <code>Shipping_Cost</code> is aggregated, it is <strong>not</strong> listed in the <code>GROUP BY</code> clause; only <code>Product_Category</code> and <code>Sales_Manager</code> are. Once the rows are grouped, <code>HAVING</code> checks whether each group’s total cost exceeds 6000.</p>
+<blockquote>
+<p><strong>Note:</strong> Because <code>HAVING</code> is evaluated before the <code>SELECT</code> list is finalized, you cannot directly use column aliases (like <code>Total_Cost</code>) within the <code>HAVING</code> clause.</p>
+</blockquote>
+<hr>
+<h2 id="4-group-by-with-order-by">4. GROUP BY with ORDER BY</h2>
+<p>By default, <code>GROUP BY</code> orders records in ascending (alphabetical) order according to the grouped columns. However, if you want to sort by your aggregated columns or in a specific sequence, you use <code>ORDER BY</code>.</p>
+<p>Continuing the previous example, let’s say you want to sort by <code>Total_Cost</code> in descending order:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> 
+    Product_Category,
+    Sales_Manager,
+    <span class="hljs-keyword">SUM</span>(Shipping_Cost) <span class="hljs-keyword">AS</span> Total_Cost
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> 
+    Product_Category,
+    Sales_Manager
+<span class="hljs-keyword">ORDER</span> <span class="hljs-keyword">BY</span> 
+    Total_Cost <span class="hljs-keyword">DESC</span>;
+</div></code></pre>
+<p><em>(Image:7.png)</em><br>
+<em>Using ORDER BY DESC on an Aggregated Column | Image by Author</em></p>
+<p>Here, <code>Product_Category</code> and <code>Sales_Manager</code> are no longer in ascending order because we have not specified them in the <code>ORDER BY</code> clause. If you want those columns in ascending order while keeping <code>Total_Cost</code> in descending order, list them all in <code>ORDER BY</code> with the desired sorting:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> 
+    Product_Category,
+    Sales_Manager,
+    <span class="hljs-keyword">SUM</span>(Shipping_Cost) <span class="hljs-keyword">AS</span> Total_Cost
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> 
+    Product_Category,
+    Sales_Manager
+<span class="hljs-keyword">ORDER</span> <span class="hljs-keyword">BY</span> 
+    Product_Category,
+    Sales_Manager,
+    Total_Cost <span class="hljs-keyword">DESC</span>;
+</div></code></pre>
+<p><em>(Image:8.png)</em><br>
+<em>Sorting by Multiple Columns in Different Orders | Image by Author</em></p>
+<p>This query will display:</p>
+<ul>
+<li><code>Product_Category</code> and <code>Sales_Manager</code> in ascending order.</li>
+<li><code>Total_Cost</code> in descending order.</li>
+</ul>
+<blockquote>
+<p><strong>Key Takeaway:</strong> You can mix ascending and descending orders for different columns in the same <code>ORDER BY</code> clause. The order in which you list these columns in the clause changes the final sorting.</p>
+</blockquote>
+<hr>
+<h2 id="5-group-by-with-where-having-and-order-by">5. GROUP BY with WHERE, HAVING, and ORDER BY</h2>
+<p>To understand how all these clauses work together, consider this scenario:</p>
+<ul>
+<li>You want to <strong>only</strong> look at orders that are <strong>Not Delivered</strong> (<code>Status = 'Not Delivered'</code>).</li>
+<li>You also want to find <strong>each</strong> combination of <code>Sales_Manager</code> and <code>Product_Category</code> where the <strong>total</strong> <code>Shipping_Cost</code> in that category is more than 1600.</li>
+</ul>
+<p>Follow these steps:</p>
+<ol>
+<li><strong>Filter records by non-aggregated column</strong>: Use <code>WHERE Status = 'Not Delivered'</code>.</li>
+<li><strong>Group the data</strong>: Use <code>GROUP BY Sales_Manager, Product_Category</code>.</li>
+<li><strong>Filter the groups by aggregated column</strong>: Use <code>HAVING SUM(Shipping_Cost) &gt; 1600</code>.</li>
+</ol>
+<p>The resulting query:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> 
+    Sales_Manager,
+    Product_Category,
+    <span class="hljs-keyword">SUM</span>(Shipping_Cost) <span class="hljs-keyword">AS</span> Total_Cost
+<span class="hljs-keyword">FROM</span> Dummy_Sales_Data_v1
+<span class="hljs-keyword">WHERE</span> <span class="hljs-keyword">Status</span> = <span class="hljs-string">'Not Delivered'</span>
+<span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> 
+    Sales_Manager,
+    Product_Category
+<span class="hljs-keyword">HAVING</span> <span class="hljs-keyword">SUM</span>(Shipping_Cost) &gt; <span class="hljs-number">1600</span>;
+</div></code></pre>
+<p><em>(Image:9.png)</em><br>
+<em>Combining WHERE, GROUP BY, and HAVING | Image by Author</em></p>
+<p>The result shows unique <code>Sales_Manager</code> and <code>Product_Category</code> pairs that meet both conditions. Notice how the rows appear in ascending order for both columns in the final output—this is the default ordering behavior of <code>GROUP BY</code>.</p>
+<hr>
+<h2 id="conclusion">Conclusion</h2>
+<p>That covers the <code>GROUP BY</code> clause in SQL with five practical examples:</p>
+<ol>
+<li><strong>GROUP BY with Aggregate Functions</strong></li>
+<li><strong>GROUP BY without Aggregate Functions</strong></li>
+<li><strong>GROUP BY with HAVING</strong></li>
+<li><strong>GROUP BY with ORDER BY</strong></li>
+<li><strong>GROUP BY with WHERE, HAVING, and ORDER BY</strong></li>
+</ol>
+<p>Key points to remember:</p>
+<ul>
+<li><strong>When using <code>GROUP BY</code>, each column in the <code>SELECT</code> must either be aggregated or listed in the <code>GROUP BY</code>.</strong></li>
+<li><strong><code>HAVING</code> is used to filter groups (based on aggregate conditions) while <code>WHERE</code> is used to filter individual rows.</strong></li>
+<li><strong>You can sort grouped results using <code>ORDER BY</code> and can apply multiple columns in both ascending and descending orders.</strong></li>
+</ul>
+<p>With these examples in hand, you should have a solid grasp on how to effectively use <code>GROUP BY</code> in a variety of real-world data analysis scenarios. Happy querying!</p>
+
+</body>
+</html>

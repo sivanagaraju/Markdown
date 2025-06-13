@@ -1,0 +1,17 @@
+Curated Behavioral Questions (Select 1-2 per interview):
+
+Adaptability/Agility: "Describe a time when a major project's requirements changed significantly after development was already underway. How did you adapt your approach, manage the changes with your team and stakeholders, and what was the ultimate outcome? What key lessons did you take away from that experience?"
+
+Evaluation Focus: This question probes the candidate's ability to navigate uncertainty and change, a critical skill in fast-paced engineering environments. Look for evidence of flexible thinking, effective communication strategies for managing stakeholder expectations, risk assessment, and problem-solving under pressure. How did they handle shifting priorities or potential resistance to the new direction? A strong answer will detail a structured approach to reassessment and re-planning.   
+
+Communication/Conflict Resolution: "Tell me about a situation where you had a significant technical disagreement with a colleague or a different team regarding the design or implementation of a data solution. How did you approach the discussion to ensure your perspective was understood, while also understanding theirs? What was the resolution, and what role did data or objective evidence play in reaching that resolution?"
+
+Evaluation Focus: This assesses interpersonal skills, the ability to articulate a technical viewpoint respectfully and persuasively, and collaborative problem-solving. Look for an approach that values listening and finding common ground or the best technical outcome, rather than "winning" an argument. The use of data or objective criteria to support a stance is a positive indicator.   
+
+Problem Solving/Learning from Failure: "Describe a complex technical challenge you faced in a data engineering project that, despite your best efforts, didn't initially have a successful outcome or perhaps even resulted in a failure. What was the nature of the challenge, what approaches did you try, what did you learn from this experience, and how have you applied those learnings in subsequent projects?"
+
+Evaluation Focus: This question aims to uncover resilience, analytical skills in dissecting failures, intellectual honesty, and a growth mindset. Senior engineers should be comfortable discussing setbacks constructively and demonstrating an ability to learn and adapt from them. Avoid candidates who blame others or cannot articulate specific learnings.   
+
+Initiative/Proactiveness (especially relevant to optimization/improvement): "Can you provide an example of a time when you identified an opportunity to significantly improve an existing data process, system, or architecture, even if it wasn't explicitly part of your assigned responsibilities? What steps did you take to analyze the situation, propose a solution, and drive its implementation? What was the impact of your initiative?"
+
+Evaluation Focus: This question looks for a sense of ownership, technical curiosity, the ability to see the bigger picture beyond assigned tasks, and an impact-driven mindset. It aligns well with the continuous improvement and optimization themes prevalent in data engineering. Strong answers will demonstrate initiative, analytical justification for the improvement, and measurable positive outcomes.

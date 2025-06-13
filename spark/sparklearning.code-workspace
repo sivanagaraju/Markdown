@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		}
+	],
+	"settings": {
+		"CodeGPT.apiKey": "Nvidia",
+		"java.compile.nullAnalysis.mode": "automatic",
+		"files.watcherExclude": {
+			"**/target": true
+		}
+	}
+}
