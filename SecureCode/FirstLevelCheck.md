@@ -49,11 +49,16 @@ Your output MUST be a numbered list, starting with the #1 ranked candidate. For 
 ###Instruction###
 Based on the ranked list you just provided, your final task is to select ONLY the #1 ranked candidate as the single canonical example.
 
-To confirm your choice, perform a final, step-by-step comparison of the #1 candidate against the #2 candidate. Explicitly reference your original ranking rationale to justify why the #1 candidate is superior.
+**To robustly confirm your choice, you must perform a final justification. Instead of only comparing #1 and #2, you will briefly summarize why the #1 candidate is superior to the other top-ranked candidates (e.g., #2 and #3). Explicitly reference your original ranking criteria (Exploitability, Clarity, Impact) in your summary.**
 
-After this final comparison, you MUST conclude with the phrase: "The definitive canonical instance is:" followed by the file path and method name of the #1 ranked candidate. Do not list any other candidates.
+For example, your justification might look like: "#1 is the definitive choice because its exploit path is unauthenticated, making it more exploitable than #2, and its implementation is a more direct and canonical example of the vulnerability than #3."
+
+After this final justification, you MUST conclude with the exact phrase: "The definitive canonical instance is:" followed by the file path and method name of the #1 ranked candidate. Do not list any other candidates.
 
 ###Ranked List###
+<Ranked List from Stage 2>
+
+------
 
 ###Instruction###
 Based on your final selection of the definitive canonical instance, you MUST provide the information in the following JSON format.
