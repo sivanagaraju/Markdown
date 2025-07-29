@@ -1,263 +1,151 @@
+# OfficeModel_dspy_wrapper.py
+
 import os
 import ssl
 import uuid
 import base64
 import requests
-from datetime import datetime
-from typing import List, Dict, Any
 import logging
+from datetime import datetime
 from dotenv import load_dotenv
+from typing import List, Dict, Any
+
 import dspy
-from dspy import BaseLM
 
-# Configure basic logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-class OfficeModelDSPYWrapper(BaseLM):
+class OfficeModelDSPYWrapper:
     """
-    A DSPy wrapper for the OfficeModel API, integrating enterprise features like
-    Apigee authentication, custom headers, and SSL certificate handling.
+    A DSPy wrapper for the OfficeModel API, authenticating via Apigee and exposing
+    a dspy.LM instance configured to send requests through our proxy.
     """
-    
-    def __init__(self, model_name: str = "gemini-2.0-flash", **kwargs):
+
+    def __init__(self,
+                 model_name: str = "gemini-2.0-flash",
+                 *,
+                 apigee_oauth_url: str = None,
+                 consumer_key: str = None,
+                 consumer_secret: str = None,
+                 use_api_gateway: bool = None,
+                 cert_path: str = None,
+                 base_url: str = None,
+                 api_key: str = None,
+                 usecase_id: str = None,
+                 **lm_kwargs):
         """
-        Initialize the wrapper with model name and configuration.
-        
         Args:
-            model_name (str): The name of the model to use (default: "gemini-2.0-flash").
-            **kwargs: Additional parameters for the model.
+            model_name: DSPy model identifier (e.g. "gemini-2.0-flash").
+            apigee_oauth_url: OAuth URL for Apigee token exchange.
+            consumer_key: Apigee consumer key.
+            consumer_secret: Apigee consumer secret.
+            use_api_gateway: "TRUE"/"FALSE" to disable or enable real Apigee calls.
+            cert_path: Path to SSL CA bundle.
+            base_url: OfficeModel LLM endpoint URL.
+            api_key: Static API key (OfficeModel API key).
+            usecase_id: Client/use-case identifier.
+            lm_kwargs: Additional parameters for dspy.LM (e.g. temperature, max_tokens).
         """
-        # Load environment variables from .env file
         load_dotenv()
-        
-        # Retrieve required environment variables
-        self.api_key = os.getenv("OfficeModel_API_KEY")
-        self.base_url = os.getenv("OfficeModel_BASE_URL")
-        self.usecase_id = os.getenv("OfficeModel_USECASE_ID")
-        self.cert_path = os.getenv("CERTS_PATH")
-        
-        # Validate mandatory environment variables
-        self.mandatory_field_validation([
-            "OfficeModel_API_KEY", "OfficeModel_BASE_URL", 
-            "CERTS_PATH", "OfficeModel_USECASE_ID",
-            "USE_API_GATEWAY", "APIGEE_OAUTH_URL",
-            "APIGEE_CONSUMER_KEY", "APIGEE_CONSUMER_SECRET"
-        ])
-        
-        # Fetch Apigee access token for authentication
-        self.apigee_access_token = self.get_apigee_access_token()
-        
-        # Configure request headers for API calls
-        self.request_headers = {
-            "x-request-id": str(uuid.uuid4()),
-            "x-correlation-id": str(uuid.uuid4()),
-            "x-wf-client-id": self.usecase_id,
-            "x-wf-request": datetime.now().isoformat(),
-            "x-wf-api-key": self.api_key,
-            "x-wf-usecase-id": self.usecase_id,
-            "Authorization": f"Bearer {self.apigee_access_token}"
-        }
-        
-        # Set default parameters if not provided
-        self.kwargs = kwargs
-        self.kwargs.setdefault("temperature", 0)
-        self.kwargs.setdefault("max_tokens", None)
-        self.kwargs.setdefault("timeout", None)
-        self.kwargs.setdefault("max_retries", 2)
-        self.kwargs.setdefault("api_key", "dummy")
-        self.kwargs.setdefault("base_url", self.base_url)
-        
-        # Configure SSL context for secure communication
+
+        # Load and validate required env vars if not passed explicitly
+        self.apigee_oauth_url  = apigee_oauth_url  or os.getenv("APIGEE_OAUTH_URL")
+        self.consumer_key      = consumer_key      or os.getenv("APIGEE_CONSUMER_KEY")
+        self.consumer_secret   = consumer_secret   or os.getenv("APIGEE_CONSUMER_SECRET")
+        self.use_api_gateway   = use_api_gateway   or os.getenv("USE_API_GATEWAY", "TRUE")
+        self.cert_path         = cert_path         or os.getenv("CERTS_PATH")
+        self.base_url          = base_url          or os.getenv("OfficeModel_BASE_URL")
+        self.api_key           = api_key           or os.getenv("OfficeModel_API_KEY")
+        self.usecase_id        = usecase_id        or os.getenv("OfficeModel_USECASE_ID")
+
+        # Ensure mandatory fields are present
+        missing = [name for name, val in {
+            "APIGEE_OAUTH_URL": self.apigee_oauth_url,
+            "APIGEE_CONSUMER_KEY": self.consumer_key,
+            "APIGEE_CONSUMER_SECRET": self.consumer_secret,
+            "USE_API_GATEWAY": self.use_api_gateway,
+            "CERTS_PATH": self.cert_path,
+            "OfficeModel_BASE_URL": self.base_url,
+            "OfficeModel_API_KEY": self.api_key,
+            "OfficeModel_USECASE_ID": self.usecase_id,
+        }.items() if not val]
+        if missing:
+            raise Exception(f"Missing env vars: {', '.join(missing)}")
+
+        # Build SSL context
         self.ssl_context = ssl.create_default_context(cafile=self.cert_path)
-        
-        # Initialize parent BaseLM class
-        super().__init__(model=model_name, model_type="chat")
 
-    def get_apigee_access_token(self) -> str:
+        # Acquire Apigee token (or dummy)
+        self.apigee_token = self._fetch_apigee_token()
+
+        # Define headers for every request
+        self.default_headers = {
+            "x-request-id":      str(uuid.uuid4()),
+            "x-correlation-id":  str(uuid.uuid4()),
+            "x-wf-client-id":    self.usecase_id,
+            "x-wf-request":      datetime.utcnow().isoformat() + "Z",
+            "x-wf-api-key":      self.api_key,
+            "x-wf-usecase-id":   self.usecase_id,
+            "Authorization":     f"Bearer {self.apigee_token}",
+        }
+
+        # Initialize the DSPy LM adapter
+        lm_args = {
+            "model":     model_name,
+            "api_key":   self.api_key,     # forwarded to the provider adapter
+            "api_base":  self.base_url,    # endpoint for OfficeModel
+            **lm_kwargs
+        }
+        self.lm = dspy.LM(**lm_args)
+        logger.info(f"OfficeModelDSPYWrapper initialized for model {model_name}")
+
+        # Monkey-patch the LM’s request session to inject our headers & SSL
+        # (Override its internal HTTP client if needed)
+        import httpx
+        client = httpx.Client(verify=self.cert_path, headers=self.default_headers)
+        setattr(self.lm, "_client", client)
+
+    def _fetch_apigee_token(self) -> str:
         """
-        Fetch an Apigee access token using consumer credentials.
-        
-        Returns:
-            str: The access token.
-        
-        Raises:
-            Exception: If authentication fails or required env vars are missing.
+        Get a bearer token from Apigee or return "dummy" if gateway is disabled.
         """
-        # Check if API gateway is enabled
-        use_api_gateway = os.getenv("USE_API_GATEWAY")
-        if use_api_gateway and use_api_gateway.upper() == "FALSE":
-            logger.info("API gateway disabled, using dummy token")
+        if self.use_api_gateway.strip().upper() == "FALSE":
+            logger.info("API gateway disabled; using dummy token.")
             return "dummy"
-        
-        # Encode Apigee credentials for Basic Auth
-        apigee_creds = f"{os.getenv('APIGEE_CONSUMER_KEY')}:{os.getenv('APIGEE_CONSUMER_SECRET')}"
-        apigee_cred_b64 = base64.b64encode(apigee_creds.encode("utf-8")).decode("utf-8")
-        
-        try:
-            # Make POST request to Apigee OAuth endpoint
-            response = requests.post(
-                os.getenv("APIGEE_OAUTH_URL"),
-                headers={
-                    "Authorization": f"Basic {apigee_cred_b64}",
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                data={"grant_type": "client_credentials"},
-                verify=self.cert_path,
-                timeout=30
-            )
-            response.raise_for_status()
-            logger.info("Successfully obtained Apigee access token")
-            return response.json()["access_token"]
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to get Apigee access token: {e}")
-            raise Exception(f"Apigee authentication failed: {e}")
 
-    def mandatory_field_validation(self, field_names: List[str]) -> None:
-        """
-        Validate that all required environment variables are set.
-        
-        Args:
-            field_names (List[str]): List of environment variable names to validate.
-        
-        Raises:
-            Exception: If any required variable is missing or empty.
-        """
-        for field_name in field_names:
-            value = os.getenv(field_name)
-            if not value or value.strip() == "":
-                error_msg = f"The field: {field_name} is missing or empty. Please provide the right value in the environment variables."
-                logger.error(error_msg)
-                raise Exception(error_msg)
+        creds = f"{self.consumer_key}:{self.consumer_secret}"
+        b64 = base64.b64encode(creds.encode()).decode()
+        resp = requests.post(
+            self.apigee_oauth_url,
+            headers={"Authorization": f"Basic {b64}"},
+            data={"grant_type": "client_credentials"},
+            verify=self.cert_path,
+            timeout=30
+        )
+        resp.raise_for_status()
+        token = resp.json().get("access_token")
+        logger.info("Obtained Apigee access token")
+        return token
 
-    def __call__(self, prompt: str, **kwargs) -> List[Any]:
+    def __call__(self, *args, **kwargs) -> Any:
         """
-        Handle the main invocation of the language model.
-        
-        Args:
-            prompt (str): The input prompt.
-            **kwargs: Additional parameters for the model.
-            
-        Returns:
-            List[Any]: The model response.
+        Delegate calls directly to the underlying DSPy LM.
+        Supports both chat and text completions:
+            - chat: lm(messages=[{"role": "user","content": "..."}], **kwargs)
+            - text: lm("Some prompt", **kwargs)
         """
-        # Prepare the API payload
-        payload = {
-            "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": kwargs.get("temperature", self.kwargs["temperature"]),
-            "max_tokens": kwargs.get("max_tokens", self.kwargs["max_tokens"])
-        }
-        
-        try:
-            # Make POST request to OfficeModel API
-            response = requests.post(
-                self.base_url,
-                headers=self.request_headers,
-                json=payload,
-                verify=self.cert_path,
-                timeout=kwargs.get("timeout", self.kwargs["timeout"])
-            )
-            response.raise_for_status()
-            # Extract choices from response
-            choices = response.json().get("choices", [])
-            return [choice["message"]["content"] for choice in choices]
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed: {e}")
-            raise Exception(f"Failed to invoke OfficeModel API: {e}")
-
-    def basic_request(self, prompt: str, **kwargs) -> List[Any]:
-        """
-        Handle a basic request to the language model (fallback method).
-        
-        Args:
-            prompt (str): The input prompt.
-            **kwargs: Additional parameters for the model.
-            
-        Returns:
-            List[Any]: The model response.
-        """
-        return self.__call__(prompt, **kwargs)
-
-    def generate(self, prompt: str, **kwargs) -> List[str]:
-        """
-        Generate text completions.
-        
-        Args:
-            prompt (str): The input prompt.
-            **kwargs: Additional parameters for the model.
-            
-        Returns:
-            List[str]: The generated text.
-        """
-        return self.__call__(prompt, **kwargs)
-
-    def chat(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, str]:
-        """
-        Handle chat-based interactions.
-        
-        Args:
-            messages (List[Dict[str, str]]): The chat messages.
-            **kwargs: Additional parameters for the model.
-            
-        Returns:
-            Dict[str, str]: The chat response.
-        """
-        # Prepare the API payload with chat messages
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": kwargs.get("temperature", self.kwargs["temperature"]),
-            "max_tokens": kwargs.get("max_tokens", self.kwargs["max_tokens"])
-        }
-        
-        try:
-            # Make POST request to OfficeModel API
-            response = requests.post(
-                self.base_url,
-                headers=self.request_headers,
-                json=payload,
-                verify=self.cert_path,
-                timeout=kwargs.get("timeout", self.kwargs["timeout"])
-            )
-            response.raise_for_status()
-            # Return the first message content
-            return response.json()["choices"][0]["message"]
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed: {e}")
-            raise Exception(f"Failed to invoke OfficeModel API: {e}")
+        return self.lm(*args, **kwargs)
 
     def get_model_info(self) -> Dict[str, Any]:
         """
-        Get information about the current model configuration.
-        
-        Returns:
-            Dict[str, Any]: Model configuration details.
+        Return the wrapper and model configuration.
         """
-        return {
-            "model_name": self.model,
-            "temperature": self.kwargs.get("temperature", 0),
-            "max_tokens": self.kwargs.get("max_tokens"),
-            "base_url": self.base_url,
-            "max_retries": self.kwargs.get("max_retries", 2)
+        info = {
+            "model_name":   self.lm.model,
+            "temperature":  getattr(self.lm, "temperature", None),
+            "max_tokens":   getattr(self.lm, "max_tokens", None),
+            "base_url":     self.base_url,
+            "usecase_id":   self.usecase_id,
+            "num_retries":  getattr(self.lm, "num_retries", None),
         }
-
-# Example usage
-if __name__ == "__main__":
-    try:
-        # Initialize the wrapper
-        lm = OfficeModelDSPYWrapper(model_name="gemini-2.0-flash")
-        
-        # Configure DSPy to use the wrapper
-        dspy.settings.configure(lm=lm)
-        
-        # Example prompt
-        prompt = "You are a helpful assistant that translates English to Spanish. Translate: 'Hello, how are you?'"
-        
-        # Make a request
-        response = lm(prompt)
-        print("Response:", response)
-        print("Model info:", lm.get_model_info())
-    except Exception as e:
-        logger.error(f"Error: {e}")
-        print(f"Error: {e}")
+        return info
