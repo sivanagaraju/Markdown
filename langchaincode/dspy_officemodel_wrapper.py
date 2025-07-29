@@ -24,14 +24,6 @@ class OfficeModelDSPYWrapper:
     def __init__(self,
                  model_name: str = "gemini-2.0-flash",
                  *,
-                 apigee_oauth_url: str = None,
-                 consumer_key: str = None,
-                 consumer_secret: str = None,
-                 use_api_gateway: bool = None,
-                 cert_path: str = None,
-                 base_url: str = None,
-                 api_key: str = None,
-                 usecase_id: str = None,
                  **lm_kwargs):
         """
         Args:
@@ -49,14 +41,14 @@ class OfficeModelDSPYWrapper:
         load_dotenv()
 
         # Load and validate required env vars if not passed explicitly
-        self.apigee_oauth_url  = apigee_oauth_url  or os.getenv("APIGEE_OAUTH_URL")
-        self.consumer_key      = consumer_key      or os.getenv("APIGEE_CONSUMER_KEY")
-        self.consumer_secret   = consumer_secret   or os.getenv("APIGEE_CONSUMER_SECRET")
-        self.use_api_gateway   = use_api_gateway   or os.getenv("USE_API_GATEWAY", "TRUE")
-        self.cert_path         = cert_path         or os.getenv("CERTS_PATH")
-        self.base_url          = base_url          or os.getenv("OfficeModel_BASE_URL")
-        self.api_key           = api_key           or os.getenv("OfficeModel_API_KEY")
-        self.usecase_id        = usecase_id        or os.getenv("OfficeModel_USECASE_ID")
+        self.apigee_oauth_url  =  os.getenv("APIGEE_OAUTH_URL")
+        self.consumer_key      =  os.getenv("APIGEE_CONSUMER_KEY")
+        self.consumer_secret   = os.getenv("APIGEE_CONSUMER_SECRET")
+        self.use_api_gateway   =  os.getenv("USE_API_GATEWAY", "TRUE")
+        self.cert_path         = os.getenv("CERTS_PATH")
+        self.base_url          =  os.getenv("OfficeModel_BASE_URL")
+        self.api_key           = os.getenv("OfficeModel_API_KEY")
+        self.usecase_id        =  os.getenv("OfficeModel_USECASE_ID")
 
         # Ensure mandatory fields are present
         missing = [name for name, val in {
@@ -149,3 +141,24 @@ class OfficeModelDSPYWrapper:
             "num_retries":  getattr(self.lm, "num_retries", None),
         }
         return info
+
+
+if __name__ == "__main__":
+    # Example usage
+    wrapper = OfficeModelDSPYWrapper(
+        model_name="gemini-2.0-flash",
+        temperature=0.7,
+        max_tokens=100
+    )
+    dspy.config(lm=wrapper)
+    
+    response = dspy.lm("Translate 'Good morning' to French", temperature=0.0)
+    print("Direct prompt response:", response)
+    # Expected output: ["Bonjour"] or similar translation.
+
+    # 4. Chain-of-Thought example
+    qa = dspy.ChainOfThought("question -> answer")
+    result = qa(question="If I have 3 apples and I buy 2 more, how many apples do I have?")
+    print("Chain-of-Thought answer:", result.answer)
+    # Expected output: "You have 5 apples."
+
