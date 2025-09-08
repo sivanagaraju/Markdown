@@ -1,0 +1,3158 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Long-Term Maintenance Strategies for Apache Iceberg Tables</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sage': '#8B9A7B',
+                        'warm-gray': '#A0937D',
+                        'deep-blue': '#2C3E50',
+                        'soft-white': '#FEFEFE',
+                        'charcoal': '#34495E'
+                    },
+                    fontFamily: {
+                        'serif': ['Playfair Display', 'serif'],
+                        'sans': ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .toc-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid #e5e7eb;
+        }
+        .main-content {
+            margin-left: 280px;
+        }
+        @media (max-width: 1024px) {
+            .toc-fixed {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            .toc-fixed.open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+        .code-block {
+            background: #f8f9fa;
+            border-left: 4px solid #8B9A7B;
+            border-radius: 0.5rem;
+        }
+        .citation-link {
+            color: #8B9A7B;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px dotted #8B9A7B;
+        }
+        .citation-link:hover {
+            color: #2C3E50;
+            border-bottom-color: #2C3E50;
+        }
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Mermaid diagram styling */
+        .mermaid-container {
+            display: flex;
+            justify-content: center;
+            min-height: 300px;
+            max-height: 800px;
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mermaid-container .mermaid {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            cursor: grab;
+            transition: transform 0.3s ease;
+            transform-origin: center center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .mermaid-container .mermaid svg {
+            max-width: 100%;
+            height: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .mermaid-container .mermaid:active {
+            cursor: grabbing;
+        }
+
+        .mermaid-container.zoomed .mermaid {
+            height: 100%;
+            width: 100%;
+            cursor: grab;
+        }
+
+        .mermaid-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .mermaid-control-btn {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #374151;
+            font-size: 14px;
+            min-width: 36px;
+            height: 36px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mermaid-control-btn:hover {
+            background: #f8fafc;
+            border-color: #3b82f6;
+            color: #3b82f6;
+            transform: translateY(-1px);
+        }
+
+        .mermaid-control-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Enhanced mermaid theme overrides for better contrast */
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon {
+            stroke: #2C3E50 !important;
+            stroke-width: 2px !important;
+        }
+        
+        .mermaid .node .label {
+            color: #2C3E50 !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+        
+        .mermaid .edgePath .path {
+            stroke: #8B9A7B !important;
+            stroke-width: 2px !important;
+        }
+        
+        .mermaid .edgeLabel {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            color: #2C3E50 !important;
+            font-weight: 500 !important;
+            font-family: 'Inter', sans-serif !important;
+            padding: 4px 8px !important;
+            border-radius: 4px !important;
+            border: 1px solid #e5e7eb !important;
+        }
+        
+        /* Different node colors with better contrast */
+        .mermaid .node:nth-child(1) rect,
+        .mermaid .node:nth-child(1) circle,
+        .mermaid .node:nth-child(1) ellipse {
+            fill: #E3F2FD !important;
+            stroke: #1976D2 !important;
+        }
+        
+        .mermaid .node:nth-child(2) rect,
+        .mermaid .node:nth-child(2) circle,
+        .mermaid .node:nth-child(2) ellipse {
+            fill: #F3E5F5 !important;
+            stroke: #7B1FA2 !important;
+        }
+        
+        .mermaid .node:nth-child(3) rect,
+        .mermaid .node:nth-child(3) circle,
+        .mermaid .node:nth-child(3) ellipse {
+            fill: #E8F5E8 !important;
+            stroke: #388E3C !important;
+        }
+        
+        .mermaid .node:nth-child(4) rect,
+        .mermaid .node:nth-child(4) circle,
+        .mermaid .node:nth-child(4) ellipse {
+            fill: #FFF3E0 !important;
+            stroke: #F57C00 !important;
+        }
+        
+        .mermaid .node:nth-child(5) rect,
+        .mermaid .node:nth-child(5) circle,
+        .mermaid .node:nth-child(5) ellipse {
+            fill: #FFEBEE !important;
+            stroke: #D32F2F !important;
+        }
+
+        /* Responsive adjustments for mermaid controls */
+        @media (max-width: 1024px) {
+            .mermaid-control-btn:not(.reset-zoom) {
+                display: none;
+            }
+            .mermaid-controls {
+                top: auto;
+                bottom: 15px;
+                right: 15px;
+            }
+        }
+    </style>
+  </head>
+
+  <body class="bg-soft-white font-sans text-charcoal">
+    <!-- Mobile TOC Toggle -->
+    <button id="tocToggle" class="lg:hidden fixed top-4 left-4 z-50 bg-deep-blue text-white p-3 rounded-lg shadow-lg">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Table of Contents -->
+    <nav id="tocNav" class="toc-fixed p-6">
+      <div class="mb-8">
+        <h2 class="font-serif text-xl font-bold text-deep-blue mb-2">Contents</h2>
+        <div class="w-12 h-0.5 bg-sage"></div>
+      </div>
+
+      <ul class="space-y-3 text-sm">
+        <li>
+          <a href="#introduction" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">Introduction</a>
+        </li>
+        <li>
+          <a href="#core-operations" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">1. Core Maintenance Operations</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#data-compaction" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.1 Data File Compaction</a>
+            </li>
+            <li>
+              <a href="#metadata-optimization" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.2 Metadata Optimization</a>
+            </li>
+            <li>
+              <a href="#snapshot-management" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.3 Snapshot Lifecycle</a>
+            </li>
+            <li>
+              <a href="#orphan-cleanup" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.4 Orphan File Cleanup</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#query-optimization" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">2. Query Performance Optimization</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#partitioning-strategies" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">2.1 Partitioning Strategies</a>
+            </li>
+            <li>
+              <a href="#partition-evolution" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">2.2 Partition Evolution</a>
+            </li>
+            <li>
+              <a href="#pruning-efficiency" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">2.3 Pruning Efficiency</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#schema-evolution" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">3. Schema Evolution & Compatibility</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#compatibility-principles" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">3.1 Compatibility Principles</a>
+            </li>
+            <li>
+              <a href="#schema-changes" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">3.2 Schema Changes with Spark</a>
+            </li>
+            <li>
+              <a href="#dremio-integration" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">3.3 Dremio Integration</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#best-practices" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">4. Foundational Best Practices</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#table-design" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">4.1 Table Design Guidelines</a>
+            </li>
+            <li>
+              <a href="#s3-optimizations" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">4.2 S3-Specific Optimizations</a>
+            </li>
+            <li>
+              <a href="#automation-monitoring" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">4.3 Automation & Monitoring</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#contraction-pruning" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">5. Contraction Pruning Scheme</a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Hero Section -->
+      <section class="hero-gradient relative overflow-hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-20"></div>
+        <div class="relative z-10 px-4 sm:px-8 py-16">
+          <div class="max-w-7xl mx-auto">
+            <!-- Bento Grid Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[70vh]">
+              <!-- Title Block -->
+              <div class="lg:col-span-8">
+                <h1 class="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight text-shadow">
+                  <em>Long-Term Maintenance Strategies</em>
+                  <br>
+                  for Apache Iceberg Tables
+                </h1>
+                <p class="text-xl text-white text-opacity-90 mb-8 leading-relaxed">
+                  A comprehensive guide to effective data platform evolution through contraction operations,
+                  partitioning strategies, and schema evolution best practices.
+                </p>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-white text-opacity-80">
+                  <div class="flex items-center space-x-2">
+                    <i class="fas fa-database text-sage"></i>
+                    <span>Apache Iceberg 1.3.0</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <i class="fas fa-fire text-sage"></i>
+                    <span>Spark 3.4</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <i class="fas fa-cloud text-sage"></i>
+                    <span>Amazon S3</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Visual Element -->
+              <div class="lg:col-span-4 mt-8 lg:mt-0">
+                <div class="glass-effect rounded-2xl p-4 sm:p-6">
+                  <img src="https://kimi-img.moonshot.cn/pub/icon/spinner.svg" alt="Abstract iceberg diagram" class="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg mb-4" size="medium" aspect="wide" query="iceberg abstract" referrerpolicy="no-referrer" />
+                  <div class="space-y-3 text-sm text-charcoal">
+                    <div class="flex justify-between items-center">
+                      <span class="font-medium">File Compaction</span>
+                      <div class="w-20 h-2 bg-sage rounded-full"></div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="font-medium">Metadata Optimization</span>
+                      <div class="w-16 h-2 bg-warm-gray rounded-full"></div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="font-medium">Snapshot Management</span>
+                      <div class="w-12 h-2 bg-deep-blue rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Introduction -->
+      <section id="introduction" class="px-4 sm:px-8 py-16 bg-soft-white">
+        <div class="max-w-4xl mx-auto">
+          <div class="prose prose-lg max-w-none">
+            <p class="text-xl leading-relaxed text-charcoal mb-8">
+              Effective long-term maintenance of Apache Iceberg tables is achieved through a combination of core "contraction" operations—compacting small files, optimizing metadata, and expiring old snapshots—and intelligent data layout strategies like partitioning and schema evolution. For a platform using Spark 3.4 and S3, this involves regularly running procedures like
+              <code class="bg-gray-100 px-2 py-1 rounded text-sm">rewrite_data_files</code> and
+              <code class="bg-gray-100 px-2 py-1 rounded text-sm">expire_snapshots</code> to control storage costs and maintain query performance.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 my-12">
+              <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center mb-4">
+                  <div class="w-12 h-12 bg-sage bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-compress text-sage text-xl"></i>
+                  </div>
+                  <h3 class="font-serif text-xl font-semibold ml-4">Contraction Operations</h3>
+                </div>
+                <p class="text-warm-gray">Systematically reduce the physical and metadata footprint of tables through compaction, snapshot management, and cleanup operations.</p>
+              </div>
+
+              <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center mb-4">
+                  <div class="w-12 h-12 bg-deep-blue bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-filter text-deep-blue text-xl"></i>
+                  </div>
+                  <h3 class="font-serif text-xl font-semibold ml-4">Pruning Strategies</h3>
+                </div>
+                <p class="text-warm-gray">Maximize query performance through intelligent partitioning, partition evolution, and metadata-driven file skipping.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Core Maintenance Operations -->
+      <section id="core-operations" class="px-4 sm:px-8 py-16 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Core Maintenance Operations</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              Effective long-term management of Apache Iceberg tables hinges on a set of core maintenance operations designed to control storage costs and optimize query performance. These operations systematically reduce the physical and metadata footprint of a table over time.
+            </p>
+          </header>
+
+          <!-- Data File Compaction -->
+          <div id="data-compaction" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-layer-group text-sage mr-3"></i>
+                Data File Compaction
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Data file compaction is arguably the most critical maintenance task for an Iceberg table, directly addressing the pervasive "small file problem" that can severely degrade query performance and inflate metadata overhead.
+              </p>
+
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <h4 class="font-semibold text-blue-900 mb-2">Addressing the "Small File Problem"</h4>
+                <p class="text-blue-800">
+                  In high-velocity data environments, data is often written in small increments, resulting in a proliferation of tiny Parquet files on S3. Each file incurs a fixed cost during query execution, including I/O requests, metadata tracking, and scheduling overhead.
+                </p>
+              </div>
+
+              <div class="code-block p-6 mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Spark SQL Procedure for Compaction</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CALL dev.system.rewrite_data_files(
+  table => 'dev.default.events',
+  strategy => 'binpack',
+  where => 'event_time &lt; current_date()',
+  options => map(
+      'target-file-size-bytes', '536870912', -- 512 MB
+      'max-concurrent-file-group-rewrites', '10'
+  )
+);</code></pre>
+                <p class="text-sm text-gray-600 mt-2">
+                  Source: Adapted from <a href="https://aws.plainenglish.io/how-to-trigger-apache-iceberg-table-compaction-without-writing-pyspark-code-9f411328eaf6" class="citation-link" target="_blank">AWS Engineering Blog</a> and <a href="https://overcast.blog/11-apache-iceberg-optimization-tools-you-should-know-5b43211aac65" class="citation-link" target="_blank">Optimization Tools Guide</a>
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-900 mb-2">Target File Size</h5>
+                  <p class="text-green-800 text-sm">Aim for files in the range of <strong>128MB to 512MB</strong> for optimal performance with most query engines.</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-900 mb-2">Compaction Strategy</h5>
+                  <p class="text-purple-800 text-sm">Use 'binpack' for general file merging, or sort-based compaction for query-specific optimization.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadata Optimization -->
+          <div id="metadata-optimization" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-sitemap text-sage mr-3"></i>
+                Metadata File Optimization
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                While data file compaction addresses the physical layout of the data, optimizing the metadata layer is equally crucial for maintaining a high-performing Iceberg table. Iceberg's metadata is organized in a hierarchical tree structure that acts as an index over the table's data.
+              </p>
+
+              <div class="code-block p-6 mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Java API for Manifest Rewriting</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>import org.apache.iceberg.Table;
+import org.apache.iceberg.spark.actions.SparkActions;
+
+Table table = ...;
+
+SparkActions
+    .get()
+    .rewriteManifests(table)
+    .rewriteIf(file -> file.length() &lt; 10 * 1024 * 1024) // 10 MB
+    .execute();</code></pre>
+                <p class="text-sm text-gray-600 mt-2">
+                  Source: <a href="https://iceberg.apache.org/docs/1.5.1/maintenance/" class="citation-link" target="_blank">Apache Iceberg Maintenance Docs</a>
+                </p>
+              </div>
+
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <h4 class="font-semibold text-yellow-900 mb-2">Managing Manifest File Overhead</h4>
+                <p class="text-yellow-800">
+                  Frequent writes can lead to the creation of many small manifest files, causing "metadata bloat" that slows down query planning. The
+                  <code class="bg-yellow-100 px-2 py-1 rounded text-xs">rewrite_manifests</code> procedure consolidates these files for faster metadata access.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Snapshot Management -->
+          <div id="snapshot-management" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-history text-sage mr-3"></i>
+                Snapshot Lifecycle Management
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Every write operation on an Iceberg table creates a new snapshot, enabling time travel capabilities. However, retaining all snapshots indefinitely can lead to significant storage and metadata overhead.
+              </p>
+
+              <div class="code-block p-6 mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Spark SQL Procedure for Snapshot Expiration</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CALL catalog_name.system.expire_snapshots(
+  table => 'db.table_name',
+  retain_last => 10,
+  older_than => TIMESTAMP '2025-01-01 00:00:00.000'
+);</code></pre>
+              </div>
+
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <h4 class="font-semibold text-blue-900 mb-2">Automating with Table Properties</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto text-sm"><code>ALTER TABLE mydb.sales_data SET TBLPROPERTIES (
+  'history.expire.max-snapshot-age-ms' = '604800000', -- 7 days
+  'history.expire.min-snapshots-to-keep' = '10'
+);</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orphan File Cleanup -->
+          <div id="orphan-cleanup" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-broom text-sage mr-3"></i>
+                Orphan File Cleanup
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Orphan files are data or metadata files that exist in the table's storage location but are not referenced by any snapshot in the table's metadata. These files can accumulate from failed write operations or manual interventions.
+              </p>
+
+              <div class="code-block p-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Spark SQL Procedure for Orphan File Removal</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CALL catalog_name.system.remove_orphan_files(
+  table => 'db.table_name',
+  older_than => TIMESTAMP '2025-01-01 00:00:00.000'
+);</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Query Performance Optimization -->
+      <section id="query-optimization" class="px-4 sm:px-8 py-16 bg-soft-white">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Query Performance Optimization</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              At the heart of Iceberg's performance model are partitioning and pruning, which work in tandem to minimize the amount of data that needs to be scanned for any given query.
+            </p>
+          </header>
+
+          <!-- Partitioning Strategies -->
+          <div id="partitioning-strategies" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-th-large text-sage mr-3"></i>
+                Designing Effective Partitioning Strategies
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                The design of a table's partitioning scheme is one of the most critical decisions you will make when creating an Iceberg table. A well-designed partitioning strategy can enable massive performance gains by allowing the query engine to skip vast amounts of irrelevant data.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-2">High-Cardinality Filters</h4>
+                  <p class="text-blue-800 text-sm">Select columns frequently used in WHERE clauses with selective filtering patterns</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-2">Balanced Partitioning</h4>
+                  <p class="text-green-800 text-sm">Avoid partitions that are too small or too large for optimal file management</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-purple-900 mb-2">Hidden Partitioning</h4>
+                  <p class="text-purple-800 text-sm">Leverage Iceberg's automatic partition transform abstraction</p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Example Partitioning Strategy</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CREATE TABLE events (
+  id BIGINT,
+  event_time TIMESTAMP,
+  user_id STRING,
+  event_type STRING
+) USING iceberg
+PARTITIONED BY (day(event_time), bucket(16, user_id));</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Partition Evolution -->
+          <div id="partition-evolution" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-sync-alt text-sage mr-3"></i>
+                Partition Evolution for Long-Term Adaptability
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                A key feature of Apache Iceberg is its support for partition evolution, which allows for the modification of a table's partitioning scheme over time without requiring a costly full table rewrite.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                  <h4 class="font-semibold text-gray-900 mb-3">Evolution Commands</h4>
+                  <div class="space-y-2 text-sm">
+                    <div class="bg-gray-50 p-3 rounded">
+                      <code class="text-blue-600">ADD PARTITION FIELD</code>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                      <code class="text-red-600">DROP PARTITION FIELD</code>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                      <code class="text-green-600">REPLACE PARTITION FIELD</code>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 class="font-semibold text-gray-900 mb-3">Example Transformations</h4>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between items-center bg-yellow-50 p-3 rounded">
+                      <span>Identity Partition</span>
+                      <code class="text-yellow-700">category</code>
+                    </div>
+                    <div class="flex justify-between items-center bg-purple-50 p-3 rounded">
+                      <span>Bucket Partition</span>
+                      <code class="text-purple-700">bucket(16, id)</code>
+                    </div>
+                    <div class="flex justify-between items-center bg-green-50 p-3 rounded">
+                      <span>Time Partition</span>
+                      <code class="text-green-700">day(ts)</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="code-block p-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Example: Evolving Partition Granularity</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>-- Change from monthly to daily partitioning
+ALTER TABLE prod.db.sample 
+REPLACE PARTITION FIELD month(ts) WITH day(ts);</code></pre>
+                <p class="text-sm text-gray-600 mt-2">
+                  Source: <a href="https://iceberg.apache.org/docs/1.5.1/spark-ddl/" class="citation-link" target="_blank">Apache Iceberg Spark DDL Docs</a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pruning Efficiency -->
+          <div id="pruning-efficiency" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-filter text-sage mr-3"></i>
+                Maximizing Pruning Efficiency
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                While partitioning is powerful, its effectiveness can be further enhanced by maximizing data pruning through file-level statistics and advanced query optimization techniques.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-2">Min/Max Statistics</h4>
+                  <p class="text-blue-800 text-sm">
+                    Iceberg stores column-level min/max values in manifest files, enabling file-level pruning based on query predicates.
+                  </p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-2">Predicate Pushdown</h4>
+                  <p class="text-green-800 text-sm">
+                    Filters are pushed close to the data source, maximizing the effectiveness of metadata-based pruning.
+                  </p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Pruning Workflow</h4>
+                <div class="mermaid-container">
+                  <div class="mermaid-controls">
+                    <button class="mermaid-control-btn zoom-in" title="放大">
+                      <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="mermaid-control-btn zoom-out" title="缩小">
+                      <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="mermaid-control-btn reset-zoom" title="重置">
+                      <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button class="mermaid-control-btn fullscreen" title="全屏查看">
+                      <i class="fas fa-expand"></i>
+                    </button>
+                  </div>
+                  <div class="mermaid">
+                    graph TD
+                    A["Query Received"] --> B["Parse Filter Predicates"]
+                    B --> C["Check Partition Metadata"]
+                    C --> D["Skip Irrelevant Partitions"]
+                    D --> E["Check File Statistics"]
+                    E --> F["Skip Non-matching Files"]
+                    F --> G["Read Only Relevant Data"]
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Schema Evolution -->
+      <section id="schema-evolution" class="px-4 sm:px-8 py-16 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Schema Evolution & Compatibility</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              Apache Iceberg provides robust support for schema evolution, allowing table schemas to be modified over time without requiring expensive and disruptive data rewrites.
+            </p>
+          </header>
+
+          <!-- Compatibility Principles -->
+          <div id="compatibility-principles" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-shield-alt text-sage mr-3"></i>
+                Backward and Forward Compatibility
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Iceberg's schema evolution is designed to maintain both backward and forward compatibility through the use of unique, stable column IDs to track each column in a table.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-blue-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">Safe Operations</h4>
+                  <ul class="space-y-2 text-blue-800 text-sm">
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Add columns</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Rename columns</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Drop columns</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Reorder columns</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Type Promotions</h4>
+                  <div class="space-y-2 text-green-800 text-sm">
+                    <div class="flex justify-between"><span>int</span><i class="fas fa-arrow-right mx-2"></i><span>bigint</span></div>
+                    <div class="flex justify-between"><span>float</span><i class="fas fa-arrow-right mx-2"></i><span>double</span></div>
+                    <div class="flex justify-between"><span>decimal(P,S)</span><i class="fas fa-arrow-right mx-2"></i><span>decimal(P2,S)</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <h4 class="font-semibold text-yellow-900 mb-2">Column ID-Based System</h4>
+                <p class="text-yellow-800">
+                  Iceberg uses unique column IDs rather than column names or positions, ensuring that schema changes are independent and free of side-effects. When a column is added, it is assigned a new, unique ID.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schema Changes with Spark -->
+          <div id="schema-changes" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-code text-sage mr-3"></i>
+                Implementing Schema Changes with Spark SQL
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                In the Spark 3.4 and Iceberg 1.3.0 environment, schema evolution is implemented using a rich set of ALTER TABLE SQL commands.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">ADD COLUMN</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE sales 
+ADD COLUMN customer_segment STRING;</code></pre>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">RENAME COLUMN</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE sales 
+RENAME COLUMN customer_segment TO customer_tier;</code></pre>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-red-900 mb-3">DROP COLUMN</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE sales 
+DROP COLUMN customer_tier;</code></pre>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Type Promotion Examples</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-300">
+                        <th class="text-left py-2">Original Type</th>
+                        <th class="text-left py-2">Promoted Type</th>
+                        <th class="text-left py-2">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-2 font-mono">int</td>
+                        <td class="py-2 font-mono">bigint</td>
+                        <td class="py-2">32-bit to 64-bit integer</td>
+                      </tr>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-2 font-mono">float</td>
+                        <td class="py-2 font-mono">double</td>
+                        <td class="py-2">Increased floating-point precision</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 font-mono">decimal(P,S)</td>
+                        <td class="py-2 font-mono">decimal(P2,S)</td>
+                        <td class="py-2">Increased precision with same scale</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dremio Integration -->
+          <div id="dremio-integration" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-database text-sage mr-3"></i>
+                Coordinating Schema Changes with Dremio Reflections
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                When using Dremio as a query engine on top of Iceberg tables, it's important to consider the impact of schema evolution on Dremio's reflections, which are pre-computed materialized views.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-orange-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-orange-900 mb-3">Impact on Reflections</h4>
+                  <ul class="space-y-2 text-orange-800 text-sm">
+                    <li class="flex items-start"><i class="fas fa-exclamation-triangle text-orange-500 mr-2 mt-1"></i> Column additions require reflection refresh</li>
+                    <li class="flex items-start"><i class="fas fa-exclamation-triangle text-orange-500 mr-2 mt-1"></i> Column drops can invalidate reflections</li>
+                    <li class="flex items-start"><i class="fas fa-exclamation-triangle text-orange-500 mr-2 mt-1"></i> Renames require metadata updates</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Best Practices</h4>
+                  <ul class="space-y-2 text-green-800 text-sm">
+                    <li class="flex items-start"><i class="fas fa-check text-green-500 mr-2 mt-1"></i> Refresh reflections after schema changes</li>
+                    <li class="flex items-start"><i class="fas fa-check text-green-500 mr-2 mt-1"></i> Use Dremio REST API for automation</li>
+                    <li class="flex items-start"><i class="fas fa-check text-green-500 mr-2 mt-1"></i> Monitor reflection validity status</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Best Practices -->
+      <section id="best-practices" class="px-4 sm:px-8 py-16 bg-soft-white">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Foundational Best Practices</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              Establishing a set of foundational best practices for table design and management is crucial for the long-term success of a data platform built on Apache Iceberg.
+            </p>
+          </header>
+
+          <!-- Table Design Guidelines -->
+          <div id="table-design" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-drafting-compass text-sage mr-3"></i>
+                Establishing Table Design Guidelines
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Creating a set of standardized table design guidelines is a critical first step in building a maintainable data platform. These guidelines should cover key aspects of table creation and configuration.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">Target File Size</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>TBLPROPERTIES (
+  'write.target-file-size-bytes' = '268435456'
+)</code></pre>
+                  <p class="text-blue-800 text-sm mt-2">Recommended: 128MB - 512MB</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Metadata Retention</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>TBLPROPERTIES (
+  'write.metadata.previous-versions-max' = '10'
+)</code></pre>
+                  <p class="text-green-800 text-sm mt-2">Control metadata file bloat</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-purple-900 mb-3">Auto Cleanup</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>TBLPROPERTIES (
+  'write.metadata.delete-after-commit.enabled' = 'true'
+)</code></pre>
+                  <p class="text-purple-800 text-sm mt-2">Automatic metadata management</p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Complete Table Creation Example</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CREATE TABLE mydb.sales_data (
+  id BIGINT,
+  amount DECIMAL(10, 2),
+  sale_date DATE,
+  customer_id STRING
+) USING iceberg
+PARTITIONED BY (day(sale_date), bucket(16, customer_id))
+TBLPROPERTIES (
+  'write.target-file-size-bytes' = '268435456',      -- 256MB
+  'write.metadata.previous-versions-max' = '10',
+  'write.metadata.delete-after-commit.enabled' = 'true',
+  'write.object-storage.enabled' = 'true'
+);</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- S3-Specific Optimizations -->
+          <div id="s3-optimizations" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-cloud text-sage mr-3"></i>
+                S3-Specific Optimizations
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                When using Amazon S3 as the storage backend, there are specific optimizations that can improve performance and reduce costs by understanding S3's unique characteristics.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-orange-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-orange-900 mb-3">Request Rate Limits</h4>
+                  <p class="text-orange-800 text-sm mb-3">
+                    S3 has default request rate limits of 3,500 PUT and 5,500 GET requests per second per prefix.
+                  </p>
+                  <div class="bg-white p-3 rounded text-xs">
+                    <div class="flex justify-between mb-1"><span>PUT/COPY/POST/DELETE</span><span>3,500/sec</span></div>
+                    <div class="flex justify-between"><span>GET/HEAD</span><span>5,500/sec</span></div>
+                  </div>
+                </div>
+                <div class="bg-blue-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">ObjectStoreLocationProvider</h4>
+                  <p class="text-blue-800 text-sm mb-3">
+                    Automatically adds hash-based prefixes to distribute files across multiple S3 prefixes.
+                  </p>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE mydb.sales_data 
+SET TBLPROPERTIES (
+  'write.object-storage.enabled' = 'true'
+);</code></pre>
+                </div>
+              </div>
+
+              <div class="bg-green-50 border-l-4 border-green-400 p-4">
+                <h4 class="font-semibold text-green-900 mb-2">Hash-Based Prefix Benefits</h4>
+                <p class="text-green-800">
+                  The
+                  <code class="bg-green-100 px-2 py-1 rounded text-xs">ObjectStoreLocationProvider</code> helps distribute request load across multiple prefixes, reducing the risk of hitting S3's request rate limits and improving overall performance.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Automation and Monitoring -->
+          <div id="automation-monitoring" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-cogs text-sage mr-3"></i>
+                Automation and Monitoring
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                To ensure that Iceberg tables remain healthy and performant over the long term, it's essential to have a robust strategy for automation and monitoring.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">Scheduling Maintenance</h4>
+                  <p class="text-blue-800 text-sm mb-3">Use orchestration tools like Apache Airflow or AWS Step Functions</p>
+                  <div class="space-y-1 text-xs text-blue-700">
+                    <div>• Daily compaction jobs</div>
+                    <div>• Weekly snapshot expiration</div>
+                    <div>• Monthly manifest optimization</div>
+                  </div>
+                </div>
+                <div class="bg-green-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Key Metrics to Monitor</h4>
+                  <ul class="space-y-1 text-green-800 text-sm">
+                    <li>• File counts per table</li>
+                    <li>• Snapshot age and growth</li>
+                    <li>• Query performance trends</li>
+                    <li>• Storage costs and optimization</li>
+                  </ul>
+                </div>
+                <div class="bg-purple-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-purple-900 mb-3">Cost-Performance Balance</h4>
+                  <p class="text-purple-800 text-sm">Find the optimal balance between maintenance costs and performance gains through careful monitoring and tuning.</p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Recommended Maintenance Schedule</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-300">
+                        <th class="text-left py-2">Operation</th>
+                        <th class="text-left py-2">Frequency</th>
+                        <th class="text-left py-2">Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-3 font-medium">Data File Compaction</td>
+                        <td class="py-3">Daily</td>
+                        <td class="py-3"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">High</span></td>
+                      </tr>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-3 font-medium">Snapshot Expiration</td>
+                        <td class="py-3">Weekly</td>
+                        <td class="py-3"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">High</span></td>
+                      </tr>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-3 font-medium">Manifest Optimization</td>
+                        <td class="py-3">Weekly</td>
+                        <td class="py-3"><span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Medium</span></td>
+                      </tr>
+                      <tr>
+                        <td class="py-3 font-medium">Orphan File Cleanup</td>
+                        <td class="py-3">Monthly</td>
+                        <td class="py-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Low</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contraction Pruning Scheme -->
+      <section id="contraction-pruning" class="px-4 sm:px-8 py-16 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Understanding "Contraction Pruning" in the Iceberg Ecosystem</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              The term "contraction pruning" represents a conceptual framework that combines two critical aspects of Iceberg table management: "contraction" of the table's physical and metadata footprint, and "pruning" of data during query execution.
+            </p>
+          </header>
+
+          <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              <div>
+                <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                  <i class="fas fa-compress text-sage mr-3"></i>
+                  "Contraction" as Table Reduction
+                </h3>
+                <p class="text-charcoal mb-4">
+                  "Contraction" refers to the set of operations designed to reduce the physical and metadata footprint of a table. This proactive maintenance keeps tables healthy and efficient over time.
+                </p>
+                <ul class="space-y-2 text-sm text-warm-gray">
+                  <li class="flex items-start"><i class="fas fa-layer-group text-sage mr-2 mt-1"></i> Data File Compaction</li>
+                  <li class="flex items-start"><i class="fas fa-sitemap text-sage mr-2 mt-1"></i> Metadata File Optimization</li>
+                  <li class="flex items-start"><i class="fas fa-history text-sage mr-2 mt-1"></i> Snapshot Lifecycle Management</li>
+                  <li class="flex items-start"><i class="fas fa-broom text-sage mr-2 mt-1"></i> Orphan File Cleanup</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                  <i class="fas fa-filter text-sage mr-3"></i>
+                  "Pruning" as Query Optimization
+                </h3>
+                <p class="text-charcoal mb-4">
+                  "Pruning" refers to the set of query optimization techniques that leverage the table's rich metadata to skip irrelevant data files during query execution.
+                </p>
+                <ul class="space-y-2 text-sm text-warm-gray">
+                  <li class="flex items-start"><i class="fas fa-th-large text-sage mr-2 mt-1"></i> Partition Pruning</li>
+                  <li class="flex items-start"><i class="fas fa-chart-bar text-sage mr-2 mt-1"></i> File-Level Statistics Pruning</li>
+                  <li class="flex items-start"><i class="fas fa-arrow-down text-sage mr-2 mt-1"></i> Predicate Pushdown</li>
+                  <li class="flex items-start"><i class="fas fa-sync text-sage mr-2 mt-1"></i> Dynamic Partition Pruning</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-6 mb-8">
+              <h4 class="font-semibold text-blue-900 mb-3">Evolution of Maintenance Schemes</h4>
+              <p class="text-blue-800 mb-4">
+                The strategies for maintaining Iceberg tables have evolved significantly from manual, script-based procedures to automated, declarative optimization.
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded">
+                  <h5 class="font-semibold text-gray-900 mb-2">Manual Era</h5>
+                  <p class="text-sm text-gray-700">Custom Spark jobs for compaction and maintenance</p>
+                </div>
+                <div class="bg-white p-4 rounded">
+                  <h5 class="font-semibold text-gray-900 mb-2">Procedural Era</h5>
+                  <p class="text-sm text-gray-700">Built-in SQL procedures for common maintenance tasks</p>
+                </div>
+                <div class="bg-white p-4 rounded">
+                  <h5 class="font-semibold text-gray-900 mb-2">Automated Era</h5>
+                  <p class="text-sm text-gray-700">Engine-specific commands and automatic optimization</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-lg">
+              <h4 class="font-semibold text-gray-900 mb-3">A Unified Maintenance Strategy</h4>
+              <p class="text-gray-800 mb-4">
+                A successful long-term maintenance strategy requires a unified approach that integrates contraction and pruning concepts, aligning maintenance tasks with data platform evolution goals.
+              </p>
+              <div class="flex flex-wrap gap-3">
+                <span class="bg-sage text-white px-3 py-1 rounded-full text-sm">Compaction → Better Pruning</span>
+                <span class="bg-deep-blue text-white px-3 py-1 rounded-full text-sm">Snapshot Management → Storage Efficiency</span>
+                <span class="bg-warm-gray text-white px-3 py-1 rounded-full text-sm">Partition Evolution → Query Performance</span>
+                <span class="bg-charcoal text-white px-3 py-1 rounded-full text-sm">Automation → Consistency</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="px-4 sm:px-8 py-12 bg-deep-blue text-white">
+        <div class="max-w-6xl mx-auto">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 class="font-serif text-xl font-semibold mb-4">Resources</h3>
+              <ul class="space-y-2 text-sm text-blue-100">
+                <li>
+                  <a href="https://iceberg.apache.org/docs/1.3.0/" class="hover:text-white transition-colors" target="_blank">Apache Iceberg Documentation</a>
+                </li>
+                <li>
+                  <a href="https://spark.apache.org/docs/3.4.0/" class="hover:text-white transition-colors" target="_blank">Spark 3.4 Documentation</a>
+                </li>
+                <li>
+                  <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html" class="hover:text-white transition-colors" target="_blank">Amazon S3 Documentation</a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-serif text-xl font-semibold mb-4">Key References</h3>
+              <ul class="space-y-2 text-sm text-blue-100">
+                <li>
+                  <a href="https://iceberg.apache.org/docs/1.5.1/spark-ddl/" class="hover:text-white transition-colors" target="_blank">Spark DDL Commands</a>
+                </li>
+                <li>
+                  <a href="https://iceberg.apache.org/docs/1.5.1/maintenance/" class="hover:text-white transition-colors" target="_blank">Table Maintenance</a>
+                </li>
+                <li>
+                  <a href="https://iceberg.apache.org/spec/" class="hover:text-white transition-colors" target="_blank">Iceberg Specification</a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-serif text-xl font-semibold mb-4">Recommended Reading</h3>
+              <ul class="space-y-2 text-sm text-blue-100">
+                <li>
+                  <a href="https://www.upsolver.com/blog/iceberg-101-what-is-the-iceberg-table-format" class="hover:text-white transition-colors" target="_blank">Iceberg Table Format Guide</a>
+                </li>
+                <li>
+                  <a href="https://overcast.blog/11-apache-iceberg-optimization-tools-you-should-know-5b43211aac65" class="hover:text-white transition-colors" target="_blank">Iceberg Optimization Tools</a>
+                </li>
+                <li>
+                  <a href="https://aws.plainenglish.io/how-to-trigger-apache-iceberg-table-compaction-without-writing-pyspark-code-9f411328eaf6" class="hover:text-white transition-colors" target="_blank">Compaction Without PySpark</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="border-t border-blue-700 mt-8 pt-8 text-center text-blue-100 text-sm">
+            <p>&copy; 2024 Long-Term Maintenance Strategies for Apache Iceberg Tables. Built with modern web technologies.</p>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <script>
+        // Initialize Mermaid with enhanced theme
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#FFFFFF',
+                primaryTextColor: '#2C3E50',
+                primaryBorderColor: '#2C3E50',
+                lineColor: '#8B9A7B',
+                secondaryColor: '#F3E5F5',
+                tertiaryColor: '#E3F2FD',
+                background: '#FFFFFF',
+                mainBkg: '#FFFFFF',
+                secondBkg: '#F3E5F5',
+                tertiaryBkg: '#E3F2FD',
+                // Enhanced contrast colors
+                nodeBorder: '#2C3E50',
+                clusterBkg: '#F8F9FA',
+                clusterBorder: '#8B9A7B',
+                defaultLinkColor: '#8B9A7B',
+                titleColor: '#2C3E50',
+                edgeLabelBackground: '#FFFFFF',
+                nodeTextColor: '#2C3E50'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 50,
+                diagramPadding: 20,
+                useMaxWidth: false
+            },
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 14
+        });
+
+        // Initialize Mermaid Controls for zoom and pan
+        function initializeMermaidControls() {
+            const containers = document.querySelectorAll('.mermaid-container');
+
+            containers.forEach(container => {
+                const mermaidElement = container.querySelector('.mermaid');
+                let scale = 1;
+                let isDragging = false;
+                let startX, startY, translateX = 0, translateY = 0;
+
+                // 触摸相关状态
+                let isTouch = false;
+                let touchStartTime = 0;
+                let initialDistance = 0;
+                let initialScale = 1;
+                let isPinching = false;
+
+                // Zoom controls
+                const zoomInBtn = container.querySelector('.zoom-in');
+                const zoomOutBtn = container.querySelector('.zoom-out');
+                const resetBtn = container.querySelector('.reset-zoom');
+                const fullscreenBtn = container.querySelector('.fullscreen');
+
+                function updateTransform() {
+                    mermaidElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+                    if (scale > 1) {
+                        container.classList.add('zoomed');
+                    } else {
+                        container.classList.remove('zoomed');
+                    }
+
+                    mermaidElement.style.cursor = isDragging ? 'grabbing' : 'grab';
+                }
+
+                if (zoomInBtn) {
+                    zoomInBtn.addEventListener('click', () => {
+                        scale = Math.min(scale * 1.25, 4);
+                        updateTransform();
+                    });
+                }
+
+                if (zoomOutBtn) {
+                    zoomOutBtn.addEventListener('click', () => {
+                        scale = Math.max(scale / 1.25, 0.3);
+                        if (scale <= 1) {
+                            translateX = 0;
+                            translateY = 0;
+                        }
+                        updateTransform();
+                    });
+                }
+
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        scale = 1;
+                        translateX = 0;
+                        translateY = 0;
+                        updateTransform();
+                    });
+                }
+
+                if (fullscreenBtn) {
+                    fullscreenBtn.addEventListener('click', () => {
+                        if (container.requestFullscreen) {
+                            container.requestFullscreen();
+                        } else if (container.webkitRequestFullscreen) {
+                            container.webkitRequestFullscreen();
+                        } else if (container.msRequestFullscreen) {
+                            container.msRequestFullscreen();
+                        }
+                    });
+                }
+
+                // Mouse Events
+                mermaidElement.addEventListener('mousedown', (e) => {
+                    if (isTouch) return; // 如果是触摸设备，忽略鼠标事件
+
+                    isDragging = true;
+                    startX = e.clientX - translateX;
+                    startY = e.clientY - translateY;
+                    mermaidElement.style.cursor = 'grabbing';
+                    updateTransform();
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging && !isTouch) {
+                        translateX = e.clientX - startX;
+                        translateY = e.clientY - startY;
+                        updateTransform();
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (isDragging && !isTouch) {
+                        isDragging = false;
+                        mermaidElement.style.cursor = 'grab';
+                        updateTransform();
+                    }
+                });
+
+                document.addEventListener('mouseleave', () => {
+                    if (isDragging && !isTouch) {
+                        isDragging = false;
+                        mermaidElement.style.cursor = 'grab';
+                        updateTransform();
+                    }
+                });
+
+                // 获取两点之间的距离
+                function getTouchDistance(touch1, touch2) {
+                    return Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                }
+
+                // Touch Events - 触摸事件处理
+                mermaidElement.addEventListener('touchstart', (e) => {
+                    isTouch = true;
+                    touchStartTime = Date.now();
+
+                    if (e.touches.length === 1) {
+                        // 单指拖动
+                        isPinching = false;
+                        isDragging = true;
+
+                        const touch = e.touches[0];
+                        startX = touch.clientX - translateX;
+                        startY = touch.clientY - translateY;
+
+                    } else if (e.touches.length === 2) {
+                        // 双指缩放
+                        isPinching = true;
+                        isDragging = false;
+
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        initialDistance = getTouchDistance(touch1, touch2);
+                        initialScale = scale;
+                    }
+
+                    e.preventDefault();
+                }, { passive: false });
+
+                mermaidElement.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 1 && isDragging && !isPinching) {
+                        // 单指拖动
+                        const touch = e.touches[0];
+                        translateX = touch.clientX - startX;
+                        translateY = touch.clientY - startY;
+                        updateTransform();
+
+                    } else if (e.touches.length === 2 && isPinching) {
+                        // 双指缩放
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        const currentDistance = getTouchDistance(touch1, touch2);
+
+                        if (initialDistance > 0) {
+                            const newScale = Math.min(Math.max(
+                                initialScale * (currentDistance / initialDistance),
+                                0.3
+                            ), 4);
+                            scale = newScale;
+                            updateTransform();
+                        }
+                    }
+
+                    e.preventDefault();
+                }, { passive: false });
+
+                mermaidElement.addEventListener('touchend', (e) => {
+                    // 重置状态
+                    if (e.touches.length === 0) {
+                        isDragging = false;
+                        isPinching = false;
+                        initialDistance = 0;
+
+                        // 延迟重置isTouch，避免鼠标事件立即触发
+                        setTimeout(() => {
+                            isTouch = false;
+                        }, 100);
+                    } else if (e.touches.length === 1 && isPinching) {
+                        // 从双指变为单指，切换为拖动模式
+                        isPinching = false;
+                        isDragging = true;
+
+                        const touch = e.touches[0];
+                        startX = touch.clientX - translateX;
+                        startY = touch.clientY - translateY;
+                    }
+
+                    updateTransform();
+                });
+
+                mermaidElement.addEventListener('touchcancel', (e) => {
+                    isDragging = false;
+                    isPinching = false;
+                    initialDistance = 0;
+
+                    setTimeout(() => {
+                        isTouch = false;
+                    }, 100);
+
+                    updateTransform();
+                });
+
+                // Enhanced wheel zoom with better center point handling
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const rect = container.getBoundingClientRect();
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    const newScale = Math.min(Math.max(scale * delta, 0.3), 4);
+
+                    // Adjust translation to zoom towards center
+                    if (newScale !== scale) {
+                        const scaleDiff = newScale / scale;
+                        translateX = translateX * scaleDiff;
+                        translateY = translateY * scaleDiff;
+                        scale = newScale;
+
+                        if (scale <= 1) {
+                            translateX = 0;
+                            translateY = 0;
+                        }
+
+                        updateTransform();
+                    }
+                });
+
+                // Initialize display
+                updateTransform();
+            });
+        }
+
+        // Initialize the controls when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMermaidControls();
+        });
+
+        // Mobile TOC Toggle
+        const tocToggle = document.getElementById('tocToggle');
+        const tocNav = document.getElementById('tocNav');
+        
+        tocToggle.addEventListener('click', () => {
+            tocNav.classList.toggle('open');
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Close mobile TOC after clicking
+                    if (window.innerWidth < 1024) {
+                        tocNav.classList.remove('open');
+                    }
+                }
+            });
+        });
+
+        // Active TOC highlighting
+        const sections = document.querySelectorAll('section[id]');
+        const tocLinks = document.querySelectorAll('.toc-fixed a[href^="#"]');
+
+        function updateActiveTocLink() {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('text-sage', 'font-semibold');
+                link.classList.add('text-charcoal');
+                if (link.getAttribute('href').substring(1) === current) {
+                    link.classList.remove('text-charcoal');
+                    link.classList.add('text-sage', 'font-semibold');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveTocLink);
+        updateActiveTocLink(); // Initial call
+
+        // Close mobile TOC when clicking outside
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth < 1024 && tocNav.classList.contains('open')) {
+                if (!tocNav.contains(event.target) && !tocToggle.contains(event.target)) {
+                    tocNav.classList.remove('open');
+                }
+            }
+        });
+    </script>
+  </body>
+
+</html>
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Long-Term Maintenance Strategies for Apache Iceberg Tables</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sage': '#8B9A7B',
+                        'warm-gray': '#A0937D',
+                        'deep-blue': '#2C3E50',
+                        'soft-white': '#FEFEFE',
+                        'charcoal': '#34495E'
+                    },
+                    fontFamily: {
+                        'serif': ['Playfair Display', 'serif'],
+                        'sans': ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .toc-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid #e5e7eb;
+        }
+        .main-content {
+            margin-left: 280px;
+        }
+        @media (max-width: 1024px) {
+            .toc-fixed {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            .toc-fixed.open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+        .code-block {
+            background: #f8f9fa;
+            border-left: 4px solid #8B9A7B;
+            border-radius: 0.5rem;
+        }
+        .citation-link {
+            color: #8B9A7B;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px dotted #8B9A7B;
+        }
+        .citation-link:hover {
+            color: #2C3E50;
+            border-bottom-color: #2C3E50;
+        }
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Mermaid diagram styling */
+        .mermaid-container {
+            display: flex;
+            justify-content: center;
+            min-height: 300px;
+            max-height: 800px;
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mermaid-container .mermaid {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            cursor: grab;
+            transition: transform 0.3s ease;
+            transform-origin: center center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .mermaid-container .mermaid svg {
+            max-width: 100%;
+            height: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .mermaid-container .mermaid:active {
+            cursor: grabbing;
+        }
+
+        .mermaid-container.zoomed .mermaid {
+            height: 100%;
+            width: 100%;
+            cursor: grab;
+        }
+
+        .mermaid-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .mermaid-control-btn {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #374151;
+            font-size: 14px;
+            min-width: 36px;
+            height: 36px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mermaid-control-btn:hover {
+            background: #f8fafc;
+            border-color: #3b82f6;
+            color: #3b82f6;
+            transform: translateY(-1px);
+        }
+
+        .mermaid-control-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Enhanced mermaid theme overrides for better contrast */
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon {
+            stroke: #2C3E50 !important;
+            stroke-width: 2px !important;
+        }
+        
+        .mermaid .node .label {
+            color: #2C3E50 !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+        
+        .mermaid .edgePath .path {
+            stroke: #8B9A7B !important;
+            stroke-width: 2px !important;
+        }
+        
+        .mermaid .edgeLabel {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            color: #2C3E50 !important;
+            font-weight: 500 !important;
+            font-family: 'Inter', sans-serif !important;
+            padding: 4px 8px !important;
+            border-radius: 4px !important;
+            border: 1px solid #e5e7eb !important;
+        }
+        
+        /* Different node colors with better contrast */
+        .mermaid .node:nth-child(1) rect,
+        .mermaid .node:nth-child(1) circle,
+        .mermaid .node:nth-child(1) ellipse {
+            fill: #E3F2FD !important;
+            stroke: #1976D2 !important;
+        }
+        
+        .mermaid .node:nth-child(2) rect,
+        .mermaid .node:nth-child(2) circle,
+        .mermaid .node:nth-child(2) ellipse {
+            fill: #F3E5F5 !important;
+            stroke: #7B1FA2 !important;
+        }
+        
+        .mermaid .node:nth-child(3) rect,
+        .mermaid .node:nth-child(3) circle,
+        .mermaid .node:nth-child(3) ellipse {
+            fill: #E8F5E8 !important;
+            stroke: #388E3C !important;
+        }
+        
+        .mermaid .node:nth-child(4) rect,
+        .mermaid .node:nth-child(4) circle,
+        .mermaid .node:nth-child(4) ellipse {
+            fill: #FFF3E0 !important;
+            stroke: #F57C00 !important;
+        }
+        
+        .mermaid .node:nth-child(5) rect,
+        .mermaid .node:nth-child(5) circle,
+        .mermaid .node:nth-child(5) ellipse {
+            fill: #FFEBEE !important;
+            stroke: #D32F2F !important;
+        }
+
+        /* Responsive adjustments for mermaid controls */
+        @media (max-width: 1024px) {
+            .mermaid-control-btn:not(.reset-zoom) {
+                display: none;
+            }
+            .mermaid-controls {
+                top: auto;
+                bottom: 15px;
+                right: 15px;
+            }
+        }
+    </style>
+  </head>
+
+  <body class="bg-soft-white font-sans text-charcoal">
+    <!-- Mobile TOC Toggle -->
+    <button id="tocToggle" class="lg:hidden fixed top-4 left-4 z-50 bg-deep-blue text-white p-3 rounded-lg shadow-lg">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Table of Contents -->
+    <nav id="tocNav" class="toc-fixed p-6">
+      <div class="mb-8">
+        <h2 class="font-serif text-xl font-bold text-deep-blue mb-2">Contents</h2>
+        <div class="w-12 h-0.5 bg-sage"></div>
+      </div>
+
+      <ul class="space-y-3 text-sm">
+        <li>
+          <a href="#introduction" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">Introduction</a>
+        </li>
+        <li>
+          <a href="#core-operations" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">1. Core Maintenance Operations</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#data-compaction" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.1 Data File Compaction</a>
+            </li>
+            <li>
+              <a href="#metadata-optimization" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.2 Metadata Optimization</a>
+            </li>
+            <li>
+              <a href="#snapshot-management" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.3 Snapshot Lifecycle</a>
+            </li>
+            <li>
+              <a href="#orphan-cleanup" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">1.4 Orphan File Cleanup</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#query-optimization" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">2. Query Performance Optimization</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#partitioning-strategies" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">2.1 Partitioning Strategies</a>
+            </li>
+            <li>
+              <a href="#partition-evolution" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">2.2 Partition Evolution</a>
+            </li>
+            <li>
+              <a href="#pruning-efficiency" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">2.3 Pruning Efficiency</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#schema-evolution" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">3. Schema Evolution &amp; Compatibility</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#compatibility-principles" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">3.1 Compatibility Principles</a>
+            </li>
+            <li>
+              <a href="#schema-changes" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">3.2 Schema Changes with Spark</a>
+            </li>
+            <li>
+              <a href="#dremio-integration" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">3.3 Dremio Integration</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#best-practices" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">4. Foundational Best Practices</a>
+          <ul class="ml-4 mt-2 space-y-2 text-xs">
+            <li>
+              <a href="#table-design" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">4.1 Table Design Guidelines</a>
+            </li>
+            <li>
+              <a href="#s3-optimizations" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">4.2 S3-Specific Optimizations</a>
+            </li>
+            <li>
+              <a href="#automation-monitoring" class="block text-warm-gray hover:text-sage transition-colors duration-200 py-1">4.3 Automation &amp; Monitoring</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#contraction-pruning" class="block text-charcoal hover:text-sage transition-colors duration-200 py-1">5. Contraction Pruning Scheme</a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Hero Section -->
+      <section class="hero-gradient relative overflow-hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-20"></div>
+        <div class="relative z-10 px-4 sm:px-8 py-16">
+          <div class="max-w-7xl mx-auto">
+            <!-- Bento Grid Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[70vh]">
+              <!-- Title Block -->
+              <div class="lg:col-span-8">
+                <h1 class="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight text-shadow">
+                  <em>Long-Term Maintenance Strategies</em>
+                  <br/>
+                  for Apache Iceberg Tables
+                </h1>
+                <p class="text-xl text-white text-opacity-90 mb-8 leading-relaxed">
+                  A comprehensive guide to effective data platform evolution through contraction operations,
+                  partitioning strategies, and schema evolution best practices.
+                </p>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-white text-opacity-80">
+                  <div class="flex items-center space-x-2">
+                    <i class="fas fa-database text-sage"></i>
+                    <span>Apache Iceberg 1.3.0</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <i class="fas fa-fire text-sage"></i>
+                    <span>Spark 3.4</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <i class="fas fa-cloud text-sage"></i>
+                    <span>Amazon S3</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Visual Element -->
+              <div class="lg:col-span-4 mt-8 lg:mt-0">
+                <div class="glass-effect rounded-2xl p-4 sm:p-6">
+                  <img src="https://kimi-web-img.moonshot.cn/img/miro.medium.com/1aa2930c75580c8c1bcab71acb89671bc51c0aad" alt="Abstract iceberg diagram" class="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg mb-4" size="medium" aspect="wide" query="iceberg abstract" referrerpolicy="no-referrer" data-modified="1" data-score="0.00"/>
+                  <div class="space-y-3 text-sm text-charcoal">
+                    <div class="flex justify-between items-center">
+                      <span class="font-medium">File Compaction</span>
+                      <div class="w-20 h-2 bg-sage rounded-full"></div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="font-medium">Metadata Optimization</span>
+                      <div class="w-16 h-2 bg-warm-gray rounded-full"></div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="font-medium">Snapshot Management</span>
+                      <div class="w-12 h-2 bg-deep-blue rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Introduction -->
+      <section id="introduction" class="px-4 sm:px-8 py-16 bg-soft-white">
+        <div class="max-w-4xl mx-auto">
+          <div class="prose prose-lg max-w-none">
+            <p class="text-xl leading-relaxed text-charcoal mb-8">
+              Effective long-term maintenance of Apache Iceberg tables is achieved through a combination of core &#34;contraction&#34; operations—compacting small files, optimizing metadata, and expiring old snapshots—and intelligent data layout strategies like partitioning and schema evolution. For a platform using Spark 3.4 and S3, this involves regularly running procedures like
+              <code class="bg-gray-100 px-2 py-1 rounded text-sm">rewrite_data_files</code> and
+              <code class="bg-gray-100 px-2 py-1 rounded text-sm">expire_snapshots</code> to control storage costs and maintain query performance.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 my-12">
+              <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center mb-4">
+                  <div class="w-12 h-12 bg-sage bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-compress text-sage text-xl"></i>
+                  </div>
+                  <h3 class="font-serif text-xl font-semibold ml-4">Contraction Operations</h3>
+                </div>
+                <p class="text-warm-gray">Systematically reduce the physical and metadata footprint of tables through compaction, snapshot management, and cleanup operations.</p>
+              </div>
+
+              <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center mb-4">
+                  <div class="w-12 h-12 bg-deep-blue bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-filter text-deep-blue text-xl"></i>
+                  </div>
+                  <h3 class="font-serif text-xl font-semibold ml-4">Pruning Strategies</h3>
+                </div>
+                <p class="text-warm-gray">Maximize query performance through intelligent partitioning, partition evolution, and metadata-driven file skipping.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Core Maintenance Operations -->
+      <section id="core-operations" class="px-4 sm:px-8 py-16 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Core Maintenance Operations</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              Effective long-term management of Apache Iceberg tables hinges on a set of core maintenance operations designed to control storage costs and optimize query performance. These operations systematically reduce the physical and metadata footprint of a table over time.
+            </p>
+          </header>
+
+          <!-- Data File Compaction -->
+          <div id="data-compaction" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-layer-group text-sage mr-3"></i>
+                Data File Compaction
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Data file compaction is arguably the most critical maintenance task for an Iceberg table, directly addressing the pervasive &#34;small file problem&#34; that can severely degrade query performance and inflate metadata overhead.
+              </p>
+
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <h4 class="font-semibold text-blue-900 mb-2">Addressing the &#34;Small File Problem&#34;</h4>
+                <p class="text-blue-800">
+                  In high-velocity data environments, data is often written in small increments, resulting in a proliferation of tiny Parquet files on S3. Each file incurs a fixed cost during query execution, including I/O requests, metadata tracking, and scheduling overhead.
+                </p>
+              </div>
+
+              <div class="code-block p-6 mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Spark SQL Procedure for Compaction</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CALL dev.system.rewrite_data_files(
+  table =&gt; &#39;dev.default.events&#39;,
+  strategy =&gt; &#39;binpack&#39;,
+  where =&gt; &#39;event_time &lt; current_date()&#39;,
+  options =&gt; map(
+      &#39;target-file-size-bytes&#39;, &#39;536870912&#39;, -- 512 MB
+      &#39;max-concurrent-file-group-rewrites&#39;, &#39;10&#39;
+  )
+);</code></pre>
+                <p class="text-sm text-gray-600 mt-2">
+                  Source: Adapted from <a href="https://aws.plainenglish.io/how-to-trigger-apache-iceberg-table-compaction-without-writing-pyspark-code-9f411328eaf6" class="citation-link" target="_blank">AWS Engineering Blog</a> and <a href="https://overcast.blog/11-apache-iceberg-optimization-tools-you-should-know-5b43211aac65" class="citation-link" target="_blank">Optimization Tools Guide</a>
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-900 mb-2">Target File Size</h5>
+                  <p class="text-green-800 text-sm">Aim for files in the range of <strong>128MB to 512MB</strong> for optimal performance with most query engines.</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-900 mb-2">Compaction Strategy</h5>
+                  <p class="text-purple-800 text-sm">Use &#39;binpack&#39; for general file merging, or sort-based compaction for query-specific optimization.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadata Optimization -->
+          <div id="metadata-optimization" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-sitemap text-sage mr-3"></i>
+                Metadata File Optimization
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                While data file compaction addresses the physical layout of the data, optimizing the metadata layer is equally crucial for maintaining a high-performing Iceberg table. Iceberg&#39;s metadata is organized in a hierarchical tree structure that acts as an index over the table&#39;s data.
+              </p>
+
+              <div class="code-block p-6 mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Java API for Manifest Rewriting</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>import org.apache.iceberg.Table;
+import org.apache.iceberg.spark.actions.SparkActions;
+
+Table table = ...;
+
+SparkActions
+    .get()
+    .rewriteManifests(table)
+    .rewriteIf(file -&gt; file.length() &lt; 10 * 1024 * 1024) // 10 MB
+    .execute();</code></pre>
+                <p class="text-sm text-gray-600 mt-2">
+                  Source: <a href="https://iceberg.apache.org/docs/1.5.1/maintenance/" class="citation-link" target="_blank">Apache Iceberg Maintenance Docs</a>
+                </p>
+              </div>
+
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <h4 class="font-semibold text-yellow-900 mb-2">Managing Manifest File Overhead</h4>
+                <p class="text-yellow-800">
+                  Frequent writes can lead to the creation of many small manifest files, causing &#34;metadata bloat&#34; that slows down query planning. The
+                  <code class="bg-yellow-100 px-2 py-1 rounded text-xs">rewrite_manifests</code> procedure consolidates these files for faster metadata access.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Snapshot Management -->
+          <div id="snapshot-management" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-history text-sage mr-3"></i>
+                Snapshot Lifecycle Management
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Every write operation on an Iceberg table creates a new snapshot, enabling time travel capabilities. However, retaining all snapshots indefinitely can lead to significant storage and metadata overhead.
+              </p>
+
+              <div class="code-block p-6 mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Spark SQL Procedure for Snapshot Expiration</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CALL catalog_name.system.expire_snapshots(
+  table =&gt; &#39;db.table_name&#39;,
+  retain_last =&gt; 10,
+  older_than =&gt; TIMESTAMP &#39;2025-01-01 00:00:00.000&#39;
+);</code></pre>
+              </div>
+
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <h4 class="font-semibold text-blue-900 mb-2">Automating with Table Properties</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto text-sm"><code>ALTER TABLE mydb.sales_data SET TBLPROPERTIES (
+  &#39;history.expire.max-snapshot-age-ms&#39; = &#39;604800000&#39;, -- 7 days
+  &#39;history.expire.min-snapshots-to-keep&#39; = &#39;10&#39;
+);</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orphan File Cleanup -->
+          <div id="orphan-cleanup" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-broom text-sage mr-3"></i>
+                Orphan File Cleanup
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Orphan files are data or metadata files that exist in the table&#39;s storage location but are not referenced by any snapshot in the table&#39;s metadata. These files can accumulate from failed write operations or manual interventions.
+              </p>
+
+              <div class="code-block p-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Spark SQL Procedure for Orphan File Removal</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CALL catalog_name.system.remove_orphan_files(
+  table =&gt; &#39;db.table_name&#39;,
+  older_than =&gt; TIMESTAMP &#39;2025-01-01 00:00:00.000&#39;
+);</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Query Performance Optimization -->
+      <section id="query-optimization" class="px-4 sm:px-8 py-16 bg-soft-white">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Query Performance Optimization</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              At the heart of Iceberg&#39;s performance model are partitioning and pruning, which work in tandem to minimize the amount of data that needs to be scanned for any given query.
+            </p>
+          </header>
+
+          <!-- Partitioning Strategies -->
+          <div id="partitioning-strategies" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-th-large text-sage mr-3"></i>
+                Designing Effective Partitioning Strategies
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                The design of a table&#39;s partitioning scheme is one of the most critical decisions you will make when creating an Iceberg table. A well-designed partitioning strategy can enable massive performance gains by allowing the query engine to skip vast amounts of irrelevant data.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-2">High-Cardinality Filters</h4>
+                  <p class="text-blue-800 text-sm">Select columns frequently used in WHERE clauses with selective filtering patterns</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-2">Balanced Partitioning</h4>
+                  <p class="text-green-800 text-sm">Avoid partitions that are too small or too large for optimal file management</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-purple-900 mb-2">Hidden Partitioning</h4>
+                  <p class="text-purple-800 text-sm">Leverage Iceberg&#39;s automatic partition transform abstraction</p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Example Partitioning Strategy</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CREATE TABLE events (
+  id BIGINT,
+  event_time TIMESTAMP,
+  user_id STRING,
+  event_type STRING
+) USING iceberg
+PARTITIONED BY (day(event_time), bucket(16, user_id));</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Partition Evolution -->
+          <div id="partition-evolution" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-sync-alt text-sage mr-3"></i>
+                Partition Evolution for Long-Term Adaptability
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                A key feature of Apache Iceberg is its support for partition evolution, which allows for the modification of a table&#39;s partitioning scheme over time without requiring a costly full table rewrite.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                  <h4 class="font-semibold text-gray-900 mb-3">Evolution Commands</h4>
+                  <div class="space-y-2 text-sm">
+                    <div class="bg-gray-50 p-3 rounded">
+                      <code class="text-blue-600">ADD PARTITION FIELD</code>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                      <code class="text-red-600">DROP PARTITION FIELD</code>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                      <code class="text-green-600">REPLACE PARTITION FIELD</code>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 class="font-semibold text-gray-900 mb-3">Example Transformations</h4>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between items-center bg-yellow-50 p-3 rounded">
+                      <span>Identity Partition</span>
+                      <code class="text-yellow-700">category</code>
+                    </div>
+                    <div class="flex justify-between items-center bg-purple-50 p-3 rounded">
+                      <span>Bucket Partition</span>
+                      <code class="text-purple-700">bucket(16, id)</code>
+                    </div>
+                    <div class="flex justify-between items-center bg-green-50 p-3 rounded">
+                      <span>Time Partition</span>
+                      <code class="text-green-700">day(ts)</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="code-block p-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Example: Evolving Partition Granularity</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>-- Change from monthly to daily partitioning
+ALTER TABLE prod.db.sample 
+REPLACE PARTITION FIELD month(ts) WITH day(ts);</code></pre>
+                <p class="text-sm text-gray-600 mt-2">
+                  Source: <a href="https://iceberg.apache.org/docs/1.5.1/spark-ddl/" class="citation-link" target="_blank">Apache Iceberg Spark DDL Docs</a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pruning Efficiency -->
+          <div id="pruning-efficiency" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-filter text-sage mr-3"></i>
+                Maximizing Pruning Efficiency
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                While partitioning is powerful, its effectiveness can be further enhanced by maximizing data pruning through file-level statistics and advanced query optimization techniques.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-2">Min/Max Statistics</h4>
+                  <p class="text-blue-800 text-sm">
+                    Iceberg stores column-level min/max values in manifest files, enabling file-level pruning based on query predicates.
+                  </p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-2">Predicate Pushdown</h4>
+                  <p class="text-green-800 text-sm">
+                    Filters are pushed close to the data source, maximizing the effectiveness of metadata-based pruning.
+                  </p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Pruning Workflow</h4>
+                <div class="mermaid-container">
+                  <div class="mermaid-controls">
+                    <button class="mermaid-control-btn zoom-in" title="放大">
+                      <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="mermaid-control-btn zoom-out" title="缩小">
+                      <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="mermaid-control-btn reset-zoom" title="重置">
+                      <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button class="mermaid-control-btn fullscreen" title="全屏查看">
+                      <i class="fas fa-expand"></i>
+                    </button>
+                  </div>
+                  <div class="mermaid">
+                    graph TD
+                    A[&#34;Query Received&#34;] --&gt; B[&#34;Parse Filter Predicates&#34;]
+                    B --&gt; C[&#34;Check Partition Metadata&#34;]
+                    C --&gt; D[&#34;Skip Irrelevant Partitions&#34;]
+                    D --&gt; E[&#34;Check File Statistics&#34;]
+                    E --&gt; F[&#34;Skip Non-matching Files&#34;]
+                    F --&gt; G[&#34;Read Only Relevant Data&#34;]
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Schema Evolution -->
+      <section id="schema-evolution" class="px-4 sm:px-8 py-16 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Schema Evolution &amp; Compatibility</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              Apache Iceberg provides robust support for schema evolution, allowing table schemas to be modified over time without requiring expensive and disruptive data rewrites.
+            </p>
+          </header>
+
+          <!-- Compatibility Principles -->
+          <div id="compatibility-principles" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-shield-alt text-sage mr-3"></i>
+                Backward and Forward Compatibility
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Iceberg&#39;s schema evolution is designed to maintain both backward and forward compatibility through the use of unique, stable column IDs to track each column in a table.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-blue-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">Safe Operations</h4>
+                  <ul class="space-y-2 text-blue-800 text-sm">
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Add columns</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Rename columns</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Drop columns</li>
+                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Reorder columns</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Type Promotions</h4>
+                  <div class="space-y-2 text-green-800 text-sm">
+                    <div class="flex justify-between"><span>int</span><i class="fas fa-arrow-right mx-2"></i><span>bigint</span></div>
+                    <div class="flex justify-between"><span>float</span><i class="fas fa-arrow-right mx-2"></i><span>double</span></div>
+                    <div class="flex justify-between"><span>decimal(P,S)</span><i class="fas fa-arrow-right mx-2"></i><span>decimal(P2,S)</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <h4 class="font-semibold text-yellow-900 mb-2">Column ID-Based System</h4>
+                <p class="text-yellow-800">
+                  Iceberg uses unique column IDs rather than column names or positions, ensuring that schema changes are independent and free of side-effects. When a column is added, it is assigned a new, unique ID.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schema Changes with Spark -->
+          <div id="schema-changes" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-code text-sage mr-3"></i>
+                Implementing Schema Changes with Spark SQL
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                In the Spark 3.4 and Iceberg 1.3.0 environment, schema evolution is implemented using a rich set of ALTER TABLE SQL commands.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">ADD COLUMN</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE sales 
+ADD COLUMN customer_segment STRING;</code></pre>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">RENAME COLUMN</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE sales 
+RENAME COLUMN customer_segment TO customer_tier;</code></pre>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-red-900 mb-3">DROP COLUMN</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE sales 
+DROP COLUMN customer_tier;</code></pre>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Type Promotion Examples</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-300">
+                        <th class="text-left py-2">Original Type</th>
+                        <th class="text-left py-2">Promoted Type</th>
+                        <th class="text-left py-2">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-2 font-mono">int</td>
+                        <td class="py-2 font-mono">bigint</td>
+                        <td class="py-2">32-bit to 64-bit integer</td>
+                      </tr>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-2 font-mono">float</td>
+                        <td class="py-2 font-mono">double</td>
+                        <td class="py-2">Increased floating-point precision</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 font-mono">decimal(P,S)</td>
+                        <td class="py-2 font-mono">decimal(P2,S)</td>
+                        <td class="py-2">Increased precision with same scale</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dremio Integration -->
+          <div id="dremio-integration" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-database text-sage mr-3"></i>
+                Coordinating Schema Changes with Dremio Reflections
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                When using Dremio as a query engine on top of Iceberg tables, it&#39;s important to consider the impact of schema evolution on Dremio&#39;s reflections, which are pre-computed materialized views.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-orange-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-orange-900 mb-3">Impact on Reflections</h4>
+                  <ul class="space-y-2 text-orange-800 text-sm">
+                    <li class="flex items-start"><i class="fas fa-exclamation-triangle text-orange-500 mr-2 mt-1"></i> Column additions require reflection refresh</li>
+                    <li class="flex items-start"><i class="fas fa-exclamation-triangle text-orange-500 mr-2 mt-1"></i> Column drops can invalidate reflections</li>
+                    <li class="flex items-start"><i class="fas fa-exclamation-triangle text-orange-500 mr-2 mt-1"></i> Renames require metadata updates</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Best Practices</h4>
+                  <ul class="space-y-2 text-green-800 text-sm">
+                    <li class="flex items-start"><i class="fas fa-check text-green-500 mr-2 mt-1"></i> Refresh reflections after schema changes</li>
+                    <li class="flex items-start"><i class="fas fa-check text-green-500 mr-2 mt-1"></i> Use Dremio REST API for automation</li>
+                    <li class="flex items-start"><i class="fas fa-check text-green-500 mr-2 mt-1"></i> Monitor reflection validity status</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Best Practices -->
+      <section id="best-practices" class="px-4 sm:px-8 py-16 bg-soft-white">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Foundational Best Practices</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              Establishing a set of foundational best practices for table design and management is crucial for the long-term success of a data platform built on Apache Iceberg.
+            </p>
+          </header>
+
+          <!-- Table Design Guidelines -->
+          <div id="table-design" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-drafting-compass text-sage mr-3"></i>
+                Establishing Table Design Guidelines
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                Creating a set of standardized table design guidelines is a critical first step in building a maintainable data platform. These guidelines should cover key aspects of table creation and configuration.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">Target File Size</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>TBLPROPERTIES (
+  &#39;write.target-file-size-bytes&#39; = &#39;268435456&#39;
+)</code></pre>
+                  <p class="text-blue-800 text-sm mt-2">Recommended: 128MB - 512MB</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Metadata Retention</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>TBLPROPERTIES (
+  &#39;write.metadata.previous-versions-max&#39; = &#39;10&#39;
+)</code></pre>
+                  <p class="text-green-800 text-sm mt-2">Control metadata file bloat</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-purple-900 mb-3">Auto Cleanup</h4>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>TBLPROPERTIES (
+  &#39;write.metadata.delete-after-commit.enabled&#39; = &#39;true&#39;
+)</code></pre>
+                  <p class="text-purple-800 text-sm mt-2">Automatic metadata management</p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Complete Table Creation Example</h4>
+                <pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto"><code>CREATE TABLE mydb.sales_data (
+  id BIGINT,
+  amount DECIMAL(10, 2),
+  sale_date DATE,
+  customer_id STRING
+) USING iceberg
+PARTITIONED BY (day(sale_date), bucket(16, customer_id))
+TBLPROPERTIES (
+  &#39;write.target-file-size-bytes&#39; = &#39;268435456&#39;,      -- 256MB
+  &#39;write.metadata.previous-versions-max&#39; = &#39;10&#39;,
+  &#39;write.metadata.delete-after-commit.enabled&#39; = &#39;true&#39;,
+  &#39;write.object-storage.enabled&#39; = &#39;true&#39;
+);</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- S3-Specific Optimizations -->
+          <div id="s3-optimizations" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-cloud text-sage mr-3"></i>
+                S3-Specific Optimizations
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                When using Amazon S3 as the storage backend, there are specific optimizations that can improve performance and reduce costs by understanding S3&#39;s unique characteristics.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-orange-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-orange-900 mb-3">Request Rate Limits</h4>
+                  <p class="text-orange-800 text-sm mb-3">
+                    S3 has default request rate limits of 3,500 PUT and 5,500 GET requests per second per prefix.
+                  </p>
+                  <div class="bg-white p-3 rounded text-xs">
+                    <div class="flex justify-between mb-1"><span>PUT/COPY/POST/DELETE</span><span>3,500/sec</span></div>
+                    <div class="flex justify-between"><span>GET/HEAD</span><span>5,500/sec</span></div>
+                  </div>
+                </div>
+                <div class="bg-blue-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">ObjectStoreLocationProvider</h4>
+                  <p class="text-blue-800 text-sm mb-3">
+                    Automatically adds hash-based prefixes to distribute files across multiple S3 prefixes.
+                  </p>
+                  <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs"><code>ALTER TABLE mydb.sales_data 
+SET TBLPROPERTIES (
+  &#39;write.object-storage.enabled&#39; = &#39;true&#39;
+);</code></pre>
+                </div>
+              </div>
+
+              <div class="bg-green-50 border-l-4 border-green-400 p-4">
+                <h4 class="font-semibold text-green-900 mb-2">Hash-Based Prefix Benefits</h4>
+                <p class="text-green-800">
+                  The
+                  <code class="bg-green-100 px-2 py-1 rounded text-xs">ObjectStoreLocationProvider</code> helps distribute request load across multiple prefixes, reducing the risk of hitting S3&#39;s request rate limits and improving overall performance.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Automation and Monitoring -->
+          <div id="automation-monitoring" class="mb-16">
+            <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                <i class="fas fa-cogs text-sage mr-3"></i>
+                Automation and Monitoring
+              </h3>
+
+              <p class="text-lg mb-6 text-charcoal">
+                To ensure that Iceberg tables remain healthy and performant over the long term, it&#39;s essential to have a robust strategy for automation and monitoring.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-blue-900 mb-3">Scheduling Maintenance</h4>
+                  <p class="text-blue-800 text-sm mb-3">Use orchestration tools like Apache Airflow or AWS Step Functions</p>
+                  <div class="space-y-1 text-xs text-blue-700">
+                    <div>• Daily compaction jobs</div>
+                    <div>• Weekly snapshot expiration</div>
+                    <div>• Monthly manifest optimization</div>
+                  </div>
+                </div>
+                <div class="bg-green-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-green-900 mb-3">Key Metrics to Monitor</h4>
+                  <ul class="space-y-1 text-green-800 text-sm">
+                    <li>• File counts per table</li>
+                    <li>• Snapshot age and growth</li>
+                    <li>• Query performance trends</li>
+                    <li>• Storage costs and optimization</li>
+                  </ul>
+                </div>
+                <div class="bg-purple-50 p-6 rounded-lg">
+                  <h4 class="font-semibold text-purple-900 mb-3">Cost-Performance Balance</h4>
+                  <p class="text-purple-800 text-sm">Find the optimal balance between maintenance costs and performance gains through careful monitoring and tuning.</p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3">Recommended Maintenance Schedule</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-300">
+                        <th class="text-left py-2">Operation</th>
+                        <th class="text-left py-2">Frequency</th>
+                        <th class="text-left py-2">Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-3 font-medium">Data File Compaction</td>
+                        <td class="py-3">Daily</td>
+                        <td class="py-3"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">High</span></td>
+                      </tr>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-3 font-medium">Snapshot Expiration</td>
+                        <td class="py-3">Weekly</td>
+                        <td class="py-3"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">High</span></td>
+                      </tr>
+                      <tr class="border-b border-gray-200">
+                        <td class="py-3 font-medium">Manifest Optimization</td>
+                        <td class="py-3">Weekly</td>
+                        <td class="py-3"><span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Medium</span></td>
+                      </tr>
+                      <tr>
+                        <td class="py-3 font-medium">Orphan File Cleanup</td>
+                        <td class="py-3">Monthly</td>
+                        <td class="py-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Low</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contraction Pruning Scheme -->
+      <section id="contraction-pruning" class="px-4 sm:px-8 py-16 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+          <header class="mb-12">
+            <h2 class="font-serif text-4xl font-bold text-deep-blue mb-4">Understanding &#34;Contraction Pruning&#34; in the Iceberg Ecosystem</h2>
+            <p class="text-xl text-warm-gray leading-relaxed">
+              The term &#34;contraction pruning&#34; represents a conceptual framework that combines two critical aspects of Iceberg table management: &#34;contraction&#34; of the table&#39;s physical and metadata footprint, and &#34;pruning&#34; of data during query execution.
+            </p>
+          </header>
+
+          <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              <div>
+                <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                  <i class="fas fa-compress text-sage mr-3"></i>
+                  &#34;Contraction&#34; as Table Reduction
+                </h3>
+                <p class="text-charcoal mb-4">
+                  &#34;Contraction&#34; refers to the set of operations designed to reduce the physical and metadata footprint of a table. This proactive maintenance keeps tables healthy and efficient over time.
+                </p>
+                <ul class="space-y-2 text-sm text-warm-gray">
+                  <li class="flex items-start"><i class="fas fa-layer-group text-sage mr-2 mt-1"></i> Data File Compaction</li>
+                  <li class="flex items-start"><i class="fas fa-sitemap text-sage mr-2 mt-1"></i> Metadata File Optimization</li>
+                  <li class="flex items-start"><i class="fas fa-history text-sage mr-2 mt-1"></i> Snapshot Lifecycle Management</li>
+                  <li class="flex items-start"><i class="fas fa-broom text-sage mr-2 mt-1"></i> Orphan File Cleanup</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-serif text-2xl font-semibold text-deep-blue mb-4">
+                  <i class="fas fa-filter text-sage mr-3"></i>
+                  &#34;Pruning&#34; as Query Optimization
+                </h3>
+                <p class="text-charcoal mb-4">
+                  &#34;Pruning&#34; refers to the set of query optimization techniques that leverage the table&#39;s rich metadata to skip irrelevant data files during query execution.
+                </p>
+                <ul class="space-y-2 text-sm text-warm-gray">
+                  <li class="flex items-start"><i class="fas fa-th-large text-sage mr-2 mt-1"></i> Partition Pruning</li>
+                  <li class="flex items-start"><i class="fas fa-chart-bar text-sage mr-2 mt-1"></i> File-Level Statistics Pruning</li>
+                  <li class="flex items-start"><i class="fas fa-arrow-down text-sage mr-2 mt-1"></i> Predicate Pushdown</li>
+                  <li class="flex items-start"><i class="fas fa-sync text-sage mr-2 mt-1"></i> Dynamic Partition Pruning</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-6 mb-8">
+              <h4 class="font-semibold text-blue-900 mb-3">Evolution of Maintenance Schemes</h4>
+              <p class="text-blue-800 mb-4">
+                The strategies for maintaining Iceberg tables have evolved significantly from manual, script-based procedures to automated, declarative optimization.
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded">
+                  <h5 class="font-semibold text-gray-900 mb-2">Manual Era</h5>
+                  <p class="text-sm text-gray-700">Custom Spark jobs for compaction and maintenance</p>
+                </div>
+                <div class="bg-white p-4 rounded">
+                  <h5 class="font-semibold text-gray-900 mb-2">Procedural Era</h5>
+                  <p class="text-sm text-gray-700">Built-in SQL procedures for common maintenance tasks</p>
+                </div>
+                <div class="bg-white p-4 rounded">
+                  <h5 class="font-semibold text-gray-900 mb-2">Automated Era</h5>
+                  <p class="text-sm text-gray-700">Engine-specific commands and automatic optimization</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-lg">
+              <h4 class="font-semibold text-gray-900 mb-3">A Unified Maintenance Strategy</h4>
+              <p class="text-gray-800 mb-4">
+                A successful long-term maintenance strategy requires a unified approach that integrates contraction and pruning concepts, aligning maintenance tasks with data platform evolution goals.
+              </p>
+              <div class="flex flex-wrap gap-3">
+                <span class="bg-sage text-white px-3 py-1 rounded-full text-sm">Compaction → Better Pruning</span>
+                <span class="bg-deep-blue text-white px-3 py-1 rounded-full text-sm">Snapshot Management → Storage Efficiency</span>
+                <span class="bg-warm-gray text-white px-3 py-1 rounded-full text-sm">Partition Evolution → Query Performance</span>
+                <span class="bg-charcoal text-white px-3 py-1 rounded-full text-sm">Automation → Consistency</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="px-4 sm:px-8 py-12 bg-deep-blue text-white">
+        <div class="max-w-6xl mx-auto">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 class="font-serif text-xl font-semibold mb-4">Resources</h3>
+              <ul class="space-y-2 text-sm text-blue-100">
+                <li>
+                  <a href="https://iceberg.apache.org/docs/1.3.0/" class="hover:text-white transition-colors" target="_blank">Apache Iceberg Documentation</a>
+                </li>
+                <li>
+                  <a href="https://spark.apache.org/docs/3.4.0/" class="hover:text-white transition-colors" target="_blank">Spark 3.4 Documentation</a>
+                </li>
+                <li>
+                  <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html" class="hover:text-white transition-colors" target="_blank">Amazon S3 Documentation</a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-serif text-xl font-semibold mb-4">Key References</h3>
+              <ul class="space-y-2 text-sm text-blue-100">
+                <li>
+                  <a href="https://iceberg.apache.org/docs/1.5.1/spark-ddl/" class="hover:text-white transition-colors" target="_blank">Spark DDL Commands</a>
+                </li>
+                <li>
+                  <a href="https://iceberg.apache.org/docs/1.5.1/maintenance/" class="hover:text-white transition-colors" target="_blank">Table Maintenance</a>
+                </li>
+                <li>
+                  <a href="https://iceberg.apache.org/spec/" class="hover:text-white transition-colors" target="_blank">Iceberg Specification</a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-serif text-xl font-semibold mb-4">Recommended Reading</h3>
+              <ul class="space-y-2 text-sm text-blue-100">
+                <li>
+                  <a href="https://www.upsolver.com/blog/iceberg-101-what-is-the-iceberg-table-format" class="hover:text-white transition-colors" target="_blank">Iceberg Table Format Guide</a>
+                </li>
+                <li>
+                  <a href="https://overcast.blog/11-apache-iceberg-optimization-tools-you-should-know-5b43211aac65" class="hover:text-white transition-colors" target="_blank">Iceberg Optimization Tools</a>
+                </li>
+                <li>
+                  <a href="https://aws.plainenglish.io/how-to-trigger-apache-iceberg-table-compaction-without-writing-pyspark-code-9f411328eaf6" class="hover:text-white transition-colors" target="_blank">Compaction Without PySpark</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="border-t border-blue-700 mt-8 pt-8 text-center text-blue-100 text-sm">
+            <p>© 2024 Long-Term Maintenance Strategies for Apache Iceberg Tables. Built with modern web technologies.</p>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <script>
+        // Initialize Mermaid with enhanced theme
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#FFFFFF',
+                primaryTextColor: '#2C3E50',
+                primaryBorderColor: '#2C3E50',
+                lineColor: '#8B9A7B',
+                secondaryColor: '#F3E5F5',
+                tertiaryColor: '#E3F2FD',
+                background: '#FFFFFF',
+                mainBkg: '#FFFFFF',
+                secondBkg: '#F3E5F5',
+                tertiaryBkg: '#E3F2FD',
+                // Enhanced contrast colors
+                nodeBorder: '#2C3E50',
+                clusterBkg: '#F8F9FA',
+                clusterBorder: '#8B9A7B',
+                defaultLinkColor: '#8B9A7B',
+                titleColor: '#2C3E50',
+                edgeLabelBackground: '#FFFFFF',
+                nodeTextColor: '#2C3E50'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 50,
+                diagramPadding: 20,
+                useMaxWidth: false
+            },
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 14
+        });
+
+        // Initialize Mermaid Controls for zoom and pan
+        function initializeMermaidControls() {
+            const containers = document.querySelectorAll('.mermaid-container');
+
+            containers.forEach(container => {
+                const mermaidElement = container.querySelector('.mermaid');
+                let scale = 1;
+                let isDragging = false;
+                let startX, startY, translateX = 0, translateY = 0;
+
+                // 触摸相关状态
+                let isTouch = false;
+                let touchStartTime = 0;
+                let initialDistance = 0;
+                let initialScale = 1;
+                let isPinching = false;
+
+                // Zoom controls
+                const zoomInBtn = container.querySelector('.zoom-in');
+                const zoomOutBtn = container.querySelector('.zoom-out');
+                const resetBtn = container.querySelector('.reset-zoom');
+                const fullscreenBtn = container.querySelector('.fullscreen');
+
+                function updateTransform() {
+                    mermaidElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+                    if (scale > 1) {
+                        container.classList.add('zoomed');
+                    } else {
+                        container.classList.remove('zoomed');
+                    }
+
+                    mermaidElement.style.cursor = isDragging ? 'grabbing' : 'grab';
+                }
+
+                if (zoomInBtn) {
+                    zoomInBtn.addEventListener('click', () => {
+                        scale = Math.min(scale * 1.25, 4);
+                        updateTransform();
+                    });
+                }
+
+                if (zoomOutBtn) {
+                    zoomOutBtn.addEventListener('click', () => {
+                        scale = Math.max(scale / 1.25, 0.3);
+                        if (scale <= 1) {
+                            translateX = 0;
+                            translateY = 0;
+                        }
+                        updateTransform();
+                    });
+                }
+
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        scale = 1;
+                        translateX = 0;
+                        translateY = 0;
+                        updateTransform();
+                    });
+                }
+
+                if (fullscreenBtn) {
+                    fullscreenBtn.addEventListener('click', () => {
+                        if (container.requestFullscreen) {
+                            container.requestFullscreen();
+                        } else if (container.webkitRequestFullscreen) {
+                            container.webkitRequestFullscreen();
+                        } else if (container.msRequestFullscreen) {
+                            container.msRequestFullscreen();
+                        }
+                    });
+                }
+
+                // Mouse Events
+                mermaidElement.addEventListener('mousedown', (e) => {
+                    if (isTouch) return; // 如果是触摸设备，忽略鼠标事件
+
+                    isDragging = true;
+                    startX = e.clientX - translateX;
+                    startY = e.clientY - translateY;
+                    mermaidElement.style.cursor = 'grabbing';
+                    updateTransform();
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging && !isTouch) {
+                        translateX = e.clientX - startX;
+                        translateY = e.clientY - startY;
+                        updateTransform();
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (isDragging && !isTouch) {
+                        isDragging = false;
+                        mermaidElement.style.cursor = 'grab';
+                        updateTransform();
+                    }
+                });
+
+                document.addEventListener('mouseleave', () => {
+                    if (isDragging && !isTouch) {
+                        isDragging = false;
+                        mermaidElement.style.cursor = 'grab';
+                        updateTransform();
+                    }
+                });
+
+                // 获取两点之间的距离
+                function getTouchDistance(touch1, touch2) {
+                    return Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                }
+
+                // Touch Events - 触摸事件处理
+                mermaidElement.addEventListener('touchstart', (e) => {
+                    isTouch = true;
+                    touchStartTime = Date.now();
+
+                    if (e.touches.length === 1) {
+                        // 单指拖动
+                        isPinching = false;
+                        isDragging = true;
+
+                        const touch = e.touches[0];
+                        startX = touch.clientX - translateX;
+                        startY = touch.clientY - translateY;
+
+                    } else if (e.touches.length === 2) {
+                        // 双指缩放
+                        isPinching = true;
+                        isDragging = false;
+
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        initialDistance = getTouchDistance(touch1, touch2);
+                        initialScale = scale;
+                    }
+
+                    e.preventDefault();
+                }, { passive: false });
+
+                mermaidElement.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 1 && isDragging && !isPinching) {
+                        // 单指拖动
+                        const touch = e.touches[0];
+                        translateX = touch.clientX - startX;
+                        translateY = touch.clientY - startY;
+                        updateTransform();
+
+                    } else if (e.touches.length === 2 && isPinching) {
+                        // 双指缩放
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        const currentDistance = getTouchDistance(touch1, touch2);
+
+                        if (initialDistance > 0) {
+                            const newScale = Math.min(Math.max(
+                                initialScale * (currentDistance / initialDistance),
+                                0.3
+                            ), 4);
+                            scale = newScale;
+                            updateTransform();
+                        }
+                    }
+
+                    e.preventDefault();
+                }, { passive: false });
+
+                mermaidElement.addEventListener('touchend', (e) => {
+                    // 重置状态
+                    if (e.touches.length === 0) {
+                        isDragging = false;
+                        isPinching = false;
+                        initialDistance = 0;
+
+                        // 延迟重置isTouch，避免鼠标事件立即触发
+                        setTimeout(() => {
+                            isTouch = false;
+                        }, 100);
+                    } else if (e.touches.length === 1 && isPinching) {
+                        // 从双指变为单指，切换为拖动模式
+                        isPinching = false;
+                        isDragging = true;
+
+                        const touch = e.touches[0];
+                        startX = touch.clientX - translateX;
+                        startY = touch.clientY - translateY;
+                    }
+
+                    updateTransform();
+                });
+
+                mermaidElement.addEventListener('touchcancel', (e) => {
+                    isDragging = false;
+                    isPinching = false;
+                    initialDistance = 0;
+
+                    setTimeout(() => {
+                        isTouch = false;
+                    }, 100);
+
+                    updateTransform();
+                });
+
+                // Enhanced wheel zoom with better center point handling
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const rect = container.getBoundingClientRect();
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    const newScale = Math.min(Math.max(scale * delta, 0.3), 4);
+
+                    // Adjust translation to zoom towards center
+                    if (newScale !== scale) {
+                        const scaleDiff = newScale / scale;
+                        translateX = translateX * scaleDiff;
+                        translateY = translateY * scaleDiff;
+                        scale = newScale;
+
+                        if (scale <= 1) {
+                            translateX = 0;
+                            translateY = 0;
+                        }
+
+                        updateTransform();
+                    }
+                });
+
+                // Initialize display
+                updateTransform();
+            });
+        }
+
+        // Initialize the controls when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMermaidControls();
+        });
+
+        // Mobile TOC Toggle
+        const tocToggle = document.getElementById('tocToggle');
+        const tocNav = document.getElementById('tocNav');
+        
+        tocToggle.addEventListener('click', () => {
+            tocNav.classList.toggle('open');
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Close mobile TOC after clicking
+                    if (window.innerWidth < 1024) {
+                        tocNav.classList.remove('open');
+                    }
+                }
+            });
+        });
+
+        // Active TOC highlighting
+        const sections = document.querySelectorAll('section[id]');
+        const tocLinks = document.querySelectorAll('.toc-fixed a[href^="#"]');
+
+        function updateActiveTocLink() {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('text-sage', 'font-semibold');
+                link.classList.add('text-charcoal');
+                if (link.getAttribute('href').substring(1) === current) {
+                    link.classList.remove('text-charcoal');
+                    link.classList.add('text-sage', 'font-semibold');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveTocLink);
+        updateActiveTocLink(); // Initial call
+
+        // Close mobile TOC when clicking outside
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth < 1024 && tocNav.classList.contains('open')) {
+                if (!tocNav.contains(event.target) && !tocToggle.contains(event.target)) {
+                    tocNav.classList.remove('open');
+                }
+            }
+        });
+    </script>
+  
+
+</body></html>
